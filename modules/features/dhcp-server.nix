@@ -1,3 +1,9 @@
+{
+  config,
+  lib,
+  ...
+}:
+
 let
   cfg = config.homeLanDhcp;
 
@@ -13,12 +19,6 @@ let
     "9C:B6:D0:8E:09:6D,10.0.0.30,blue,infinite"
   ];
 in
-{
-  config,
-  lib,
-  ...
-}:
-
 {
   options.homeLanDhcp = {
     enable = lib.mkEnableOption "the home LAN DHCP server";
