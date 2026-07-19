@@ -6,16 +6,16 @@ Warning: you (the agent) are running in a docker container without access to the
 
 ```bash
 # Rebuild and switch (uses the `rebuild` alias)
-sudo nixos-rebuild switch --flake '.#nixos'
+sudo nixos-rebuild switch --flake '.?submodules=1#nixos'
 
 # Dry-run to check for errors without applying
-sudo nixos-rebuild dry-activate --flake '.#nixos'
+sudo nixos-rebuild dry-activate --flake '.?submodules=1#nixos'
 
 # Build only (no switch, useful to catch eval errors)
-nix build '.#nixosConfigurations.nixos.config.system.build.toplevel'
+nix build '.?submodules=1#nixosConfigurations.nixos.config.system.build.toplevel'
 
 # Build the first server host
-nix build '.#nixosConfigurations.red.config.system.build.toplevel'
+nix build '.?submodules=1#nixosConfigurations.red.config.system.build.toplevel'
 
 # Format all nix/shell/js files
 nix fmt
@@ -60,11 +60,12 @@ home/leo/configs/firefox.nix       ← Firefox profile and preferences
 home/leo/configs/kubernetes.nix    ← kubectl/kubectx/stern shell helpers and config (generic, public)
 home/leo/configs/copilot-container.nix ← containerized GitHub Copilot CLI wrapper
 home/leo/configs/paste-horizon.nix ← paste-horizon helper integration
+private/                          ← private submodule for local-only integrations
 ```
 
-**Local overrides:** `hosts/<hostname>/private.nix` is ignored by Git and imported
-when present. Keep credentials and private integrations in those files. The public
-configuration must remain usable when no override file exists.
+**Private configuration:** `private/` is a separate submodule and is only wired
+into the laptop profile. Do not add credentials or private integrations to the
+public tree.
 
 **How home-manager is wired in:** it runs as a NixOS module (not standalone). `useGlobalPkgs = true` and `useUserPackages = true` are set, so packages declared in `home.packages` land in the user profile and share the system's nixpkgs instance.
 

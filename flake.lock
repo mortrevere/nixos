@@ -563,13 +563,52 @@
         "type": "github"
       }
     },
+    "private": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ],
+        "sekoia-agent": "sekoia-agent"
+      },
+      "locked": {
+        "path": "./private",
+        "type": "path"
+      },
+      "original": {
+        "path": "./private",
+        "type": "path"
+      },
+      "parent": []
+    },
     "root": {
       "inputs": {
         "home-manager": "home-manager",
         "hyprland": "hyprland",
         "nixos-raspberrypi": "nixos-raspberrypi",
         "nixpkgs": "nixpkgs_2",
+        "private": "private",
         "treefmt-nix": "treefmt-nix"
+      }
+    },
+    "sekoia-agent": {
+      "inputs": {
+        "nixpkgs": [
+          "private",
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1777892232,
+        "narHash": "sha256-6scU+97m4rZnRbCN45STYdCGGZvs7cUFsZr7nas2Xsg=",
+        "ref": "refs/heads/main",
+        "rev": "3c86d88c860803d6b731fb96998468bcb713f56c",
+        "revCount": 4,
+        "type": "git",
+        "url": "ssh://git@github.com/SekoiaLab/nix-endpoint-agent.git"
+      },
+      "original": {
+        "type": "git",
+        "url": "ssh://git@github.com/SekoiaLab/nix-endpoint-agent.git"
       }
     },
     "systems": {

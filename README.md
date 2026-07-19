@@ -34,6 +34,8 @@ server hosts.
   scripts, per-host bash prompts, containerized Copilot CLI wrapper, paste-horizon).
 - **home/leo/files/** - Managed non-Nix files sourced by Home Manager modules
   (Emacs init, standalone Python scripts, etc.).
+- **private/** - Private submodule used only by the laptop profile for local-only
+  integrations.
 - **treefmt.nix** - Formatter config (`nixfmt`, `shfmt`, `prettier`, `deadnix`,
   `statix`), run via `nix fmt`.
 - **hacks/red.sh**, **hacks/black.sh**, **hacks/blue.sh** - Remote deploy
@@ -100,19 +102,20 @@ server hosts.
 ### Rebuild System
 
 ```bash
-rebuild          # alias for: sudo nixos-rebuild switch --flake '.#'$(hostname)
+rebuild          # alias for: sudo nixos-rebuild switch --flake '.?submodules=1#'$(hostname)
 os-update        # updates flake inputs, then rebuilds
 ```
 
-Both aliases are defined in `home/leo/configs/shell.nix`.
+Both aliases are defined in `home/leo/configs/shell.nix`. The `?submodules=1`
+flag makes the private laptop integrations available.
 
 To target a specific host explicitly (e.g. from another machine):
 
 ```bash
-sudo nixos-rebuild switch --flake '.#nixos'
-sudo nixos-rebuild switch --flake '.#red'
-sudo nixos-rebuild switch --flake '.#black'
-sudo nixos-rebuild switch --flake '.#blue'
+sudo nixos-rebuild switch --flake '.?submodules=1#nixos'
+sudo nixos-rebuild switch --flake '.?submodules=1#red'
+sudo nixos-rebuild switch --flake '.?submodules=1#black'
+sudo nixos-rebuild switch --flake '.?submodules=1#blue'
 ```
 
 `red.sh`, `black.sh`, and `blue.sh` deploy to their server hosts remotely over
@@ -217,5 +220,5 @@ Add a new entry to the `hosts` attrset in `flake.nix`.
   `./home/leo/laptop.nix` to the host's `homeModules`.
 - Server: same pattern, but use `../../modules/server.nix` and
   `./home/leo/server.nix`.
-- Keep machine-specific credentials and private integrations in an ignored
-  `hosts/<hostname>/private.nix` overlay.
+- Keep private integrations in the `private/` submodule and machine-specific
+  credentials in an ignored `hosts/<hostname>/private.nix` overlay.

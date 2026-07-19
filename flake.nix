@@ -13,6 +13,10 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     treefmt-nix.url = "github:numtide/treefmt-nix";
+    private = {
+      url = "path:./private";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   outputs =
@@ -37,10 +41,12 @@
           system = defaultSystem;
           systemModules = [
             ./hosts/nixos/configuration.nix
+            inputs.private.nixosModules.default
           ];
           homeModules = [
             ./home/${username}/base.nix
             ./home/${username}/laptop.nix
+            inputs.private.homeManagerModules.default
           ];
         };
 
