@@ -149,41 +149,41 @@ in
         filter = {
           family = "inet";
           content = ''
-            define private_v4 = { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 }
+                        define private_v4 = { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 }
 
-          chain input {
-            type filter hook input priority 0; policy drop;
+                      chain input {
+                        type filter hook input priority 0; policy drop;
 
-            iifname "lo" accept
-            ct state established,related accept
-            ct state invalid drop
+                        iifname "lo" accept
+                        ct state established,related accept
+                        ct state invalid drop
 
-            ip protocol icmp accept
-            ip6 nexthdr icmpv6 accept
+                        ip protocol icmp accept
+                        ip6 nexthdr icmpv6 accept
 
-            udp sport 67 udp dport 68 accept
+                        udp sport 67 udp dport 68 accept
 
-            tcp dport 22 accept
-            tcp dport 9100 ip saddr $private_v4 accept
-            udp dport 53 ip saddr $private_v4 accept
-            tcp dport 53 ip saddr $private_v4 accept
-${lib.concatMapStringsSep "\n" (rule: "            ${rule}") cfg.firewall.extraInputRules}
-          }
+                        tcp dport 22 accept
+                        tcp dport 9100 ip saddr $private_v4 accept
+                        udp dport 53 ip saddr $private_v4 accept
+                        tcp dport 53 ip saddr $private_v4 accept
+            ${lib.concatMapStringsSep "\n" (rule: "            ${rule}") cfg.firewall.extraInputRules}
+                      }
 
-          chain forward {
-            type filter hook forward priority 0; policy drop;
+                      chain forward {
+                        type filter hook forward priority 0; policy drop;
 
-            ct state established,related accept
-            iifname "podman*" accept
-            oifname "podman*" accept
-            iifname "cni-podman0" accept
-            oifname "cni-podman0" accept
-${lib.concatMapStringsSep "\n" (rule: "            ${rule}") cfg.firewall.extraForwardRules}
-          }
+                        ct state established,related accept
+                        iifname "podman*" accept
+                        oifname "podman*" accept
+                        iifname "cni-podman0" accept
+                        oifname "cni-podman0" accept
+            ${lib.concatMapStringsSep "\n" (rule: "            ${rule}") cfg.firewall.extraForwardRules}
+                      }
 
-          chain output {
-            type filter hook output priority 0; policy accept;
-          }
+                      chain output {
+                        type filter hook output priority 0; policy accept;
+                      }
           '';
         };
       }
@@ -191,11 +191,11 @@ ${lib.concatMapStringsSep "\n" (rule: "            ${rule}") cfg.firewall.extraF
         nat = {
           family = "ip";
           content = ''
-            chain postrouting {
-              type nat hook postrouting priority srcnat; policy accept;
+                        chain postrouting {
+                          type nat hook postrouting priority srcnat; policy accept;
 
-${lib.concatMapStringsSep "\n" (rule: "              ${rule}") cfg.firewall.extraNatRules}
-            }
+            ${lib.concatMapStringsSep "\n" (rule: "              ${rule}") cfg.firewall.extraNatRules}
+                        }
           '';
         };
       };

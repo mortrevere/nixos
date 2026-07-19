@@ -1,7 +1,6 @@
 {
   pkgs,
   username,
-  hostname,
   ...
 }:
 
@@ -29,6 +28,7 @@
     dfc
     gocryptfs
     jq
+    ncdu
     openssl
     yq-go
     rclone

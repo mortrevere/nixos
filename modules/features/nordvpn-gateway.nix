@@ -11,13 +11,17 @@ let
   sourceConfig = if selectedProfile != null then builtins.readFile selectedProfile else "";
   hasTunDevice = lib.hasInfix "dev tun\n" sourceConfig;
   hasInteractiveAuth = lib.hasInfix "auth-user-pass\n" sourceConfig;
-  effectiveConfig = builtins.replaceStrings [
-    "dev tun\n"
-    "auth-user-pass\n"
-  ] [
-    "dev tun-nord\n"
-    "auth-user-pass ${cfg.credentialsFile}\n"
-  ] sourceConfig;
+  effectiveConfig =
+    builtins.replaceStrings
+      [
+        "dev tun\n"
+        "auth-user-pass\n"
+      ]
+      [
+        "dev tun-nord\n"
+        "auth-user-pass ${cfg.credentialsFile}\n"
+      ]
+      sourceConfig;
 in
 {
   options.nordvpnGateway = {

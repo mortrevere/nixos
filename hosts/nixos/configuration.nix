@@ -9,7 +9,8 @@ _:
     ../../modules/features/keyd-cherry.nix
     ../../modules/features/yubikey.nix
     ./hardware-configuration.nix
-  ] ++ (if builtins.pathExists ./private.nix then [ ./private.nix ] else [ ]);
+  ]
+  ++ (if builtins.pathExists ./private.nix then [ ./private.nix ] else [ ]);
 
   hardware.yubikey = {
     enable = true;

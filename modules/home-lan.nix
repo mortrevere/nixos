@@ -19,6 +19,9 @@ let
     links = "red";
     nabu = "red";
     prometheus = "red";
+    "black.files" = "black";
+    "blue.files" = "blue";
+    "red.files" = "red";
     transmission = "blue";
   };
 in
@@ -34,7 +37,5 @@ in
 
   peerAddresses =
     hostname:
-    map (name: builtins.getAttr name addresses) (
-      builtins.filter (name: name != hostname) nodeNames
-    );
+    map (name: builtins.getAttr name addresses) (builtins.filter (name: name != hostname) nodeNames);
 }

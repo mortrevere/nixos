@@ -266,6 +266,57 @@ let
           proxy_read_timeout 10s;
         }
 
+        location = /probe/red-files {
+          proxy_pass http://127.0.0.1:8089/;
+          proxy_method GET;
+          proxy_http_version 1.1;
+          proxy_pass_request_body off;
+          proxy_set_header Host red.files.house;
+          proxy_set_header Content-Length "";
+          proxy_intercept_errors on;
+          error_page 301 302 303 307 308 = @probe_redirect;
+          add_header X-Probe-Status $upstream_status always;
+          proxy_set_header X-Forwarded-Host $host;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header X-Forwarded-Port 80;
+          proxy_read_timeout 10s;
+        }
+
+        location = /probe/blue-files {
+          proxy_pass http://${homeLan.addresses.blue}/;
+          proxy_method GET;
+          proxy_http_version 1.1;
+          proxy_pass_request_body off;
+          proxy_set_header Host blue.files.house;
+          proxy_set_header Content-Length "";
+          proxy_intercept_errors on;
+          error_page 301 302 303 307 308 = @probe_redirect;
+          add_header X-Probe-Status $upstream_status always;
+          proxy_set_header X-Forwarded-Host $host;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header X-Forwarded-Port 80;
+          proxy_read_timeout 10s;
+        }
+
+        location = /probe/black-files {
+          proxy_pass http://${homeLan.addresses.black}/;
+          proxy_method GET;
+          proxy_http_version 1.1;
+          proxy_pass_request_body off;
+          proxy_set_header Host black.files.house;
+          proxy_set_header Content-Length "";
+          proxy_intercept_errors on;
+          error_page 301 302 303 307 308 = @probe_redirect;
+          add_header X-Probe-Status $upstream_status always;
+          proxy_set_header X-Forwarded-Host $host;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header X-Forwarded-Port 80;
+          proxy_read_timeout 10s;
+        }
+
         location @probe_redirect {
           add_header X-Probe-Status $upstream_status always;
           add_header X-Probe-Status-Text $probe_status_text always;
@@ -329,6 +380,24 @@ let
           proxy_buffering off;
         }
       }
+
+      server {
+        listen 80;
+        server_name red.files.house;
+        client_max_body_size 0;
+
+        location / {
+          proxy_pass http://127.0.0.1:8089;
+          proxy_http_version 1.1;
+          proxy_set_header Host $host;
+          proxy_set_header X-Forwarded-Host $host;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header X-Forwarded-Port 80;
+          proxy_read_timeout 300s;
+          proxy_buffering off;
+        }
+      }
     }
   '';
 
@@ -366,6 +435,9 @@ in
     "d /opt/nabu 0755 root root -"
     "d /opt/prometheus 0755 root root -"
     "d /opt/prometheus/data 0750 65534 65534 -"
+    "d /opt/filebrowser 0755 root root -"
+    "d /opt/filebrowser/config 0750 1000 100 -"
+    "d /opt/filebrowser/database 0750 1000 100 -"
     "d /var/lib/red-links-nginx 0755 root root -"
   ];
 
@@ -378,6 +450,7 @@ in
       "podman-links-nginx.service"
       "podman-grafana.service"
       "podman-prometheus.service"
+      "podman-filebrowser.service"
     ];
     wants = [
       "grafana-dashboard-reconcile.service"
@@ -386,6 +459,7 @@ in
       "podman-links-nginx.service"
       "podman-grafana.service"
       "podman-prometheus.service"
+      "podman-filebrowser.service"
     ];
   };
 
@@ -471,6 +545,27 @@ in
         "--network=host"
       ];
     };
+
+    filebrowser = {
+      image = "docker.io/filebrowser/filebrowser:latest";
+      cmd = [
+        "--address=0.0.0.0"
+        "--port=8080"
+        "--root=/srv"
+        "--database=/database/filebrowser.db"
+        "--config=/config/settings.json"
+        "--noauth"
+      ];
+      volumes = [
+        "/data:/srv"
+        "/opt/filebrowser/config:/config"
+        "/opt/filebrowser/database:/database"
+      ];
+      extraOptions = [
+        "--no-healthcheck"
+        "--publish=127.0.0.1:8089:8080"
+      ];
+    };
   };
 
   environment.systemPackages = with pkgs; [
@@ -479,7 +574,7 @@ in
 
   system.activationScripts.restartRedContainers.text = ''
     if [ "''${NIXOS_ACTION:-}" = switch ] && [ -d /run/systemd/system ]; then
-      for service in prometheus grafana hyperion nabu; do
+      for service in prometheus grafana hyperion nabu filebrowser; do
         if ${pkgs.systemd}/bin/systemctl --quiet is-active "podman-$service.service"; then
           ${pkgs.systemd}/bin/systemctl restart "podman-$service.service"
         fi
@@ -565,5 +660,10 @@ in
       install -d -m 0755 /var/lib/red-links-nginx
       install -m 0644 ${linksNginxConf} /var/lib/red-links-nginx/nginx.conf
     '';
+  };
+
+  systemd.services.podman-filebrowser = {
+    after = [ "mount-data-drives.service" ];
+    wants = [ "mount-data-drives.service" ];
   };
 }

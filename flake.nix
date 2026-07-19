@@ -104,7 +104,7 @@
         nixpkgs.lib.nixosSystem {
           specialArgs = {
             inherit inputs username hostname;
-            nixos-raspberrypi = inputs.nixos-raspberrypi;
+            inherit (inputs) nixos-raspberrypi;
           };
           modules = [
             { nixpkgs.hostPlatform = system; }

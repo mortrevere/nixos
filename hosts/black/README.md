@@ -10,8 +10,7 @@ host: GRUB installs to `/dev/sda` and OS probing is enabled.
 - USB data-drive auto-mounting below `/data/<label-or-uuid>`.
 
 Registry data persists at `/opt/docker-registry`. The shared reverse proxy
-listens on port 80 and forwards every hostname to the registry's loopback port
-5000. `/data/LeoBackup1` is the shared backup destination used by the server
+listens on port 80 and forwards every hostname to the registry's loopback port 5000. `/data/LeoBackup1` is the shared backup destination used by the server
 backup jobs.
 
 The USB mount service runs on boot and on device events; Black also retries it

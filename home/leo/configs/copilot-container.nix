@@ -231,20 +231,20 @@ in
     };
 
     home.activation.copilotContainerDirs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-      mkdir -p "${config.xdg.dataHome}/copilot-cli"
-      mkdir -p "${config.xdg.dataHome}/copilot-cli/hooks"
-      mkdir -p "${config.home.homeDirectory}/.local/bin"
-      mkdir -p "${config.xdg.configHome}/copilot-container"
+            mkdir -p "${config.xdg.dataHome}/copilot-cli"
+            mkdir -p "${config.xdg.dataHome}/copilot-cli/hooks"
+            mkdir -p "${config.home.homeDirectory}/.local/bin"
+            mkdir -p "${config.xdg.configHome}/copilot-container"
 
-      # Auto-trust /workspace so copilot doesn't prompt on startup
-      if [ ! -f "${config.xdg.dataHome}/copilot-cli/settings.json" ]; then
-        echo '{"trustedFolders":["/workspace"]}' > "${config.xdg.dataHome}/copilot-cli/settings.json"
-      fi
+            # Auto-trust /workspace so copilot doesn't prompt on startup
+            if [ ! -f "${config.xdg.dataHome}/copilot-cli/settings.json" ]; then
+              echo '{"trustedFolders":["/workspace"]}' > "${config.xdg.dataHome}/copilot-cli/settings.json"
+            fi
 
-      # ntfy.sh notification hooks: always regenerated from Nix config
-      cat > "${config.xdg.dataHome}/copilot-cli/hooks/notify.json" << 'HOOKSEOF'
-${notifyHooksJson}
-HOOKSEOF
+            # ntfy.sh notification hooks: always regenerated from Nix config
+            cat > "${config.xdg.dataHome}/copilot-cli/hooks/notify.json" << 'HOOKSEOF'
+      ${notifyHooksJson}
+      HOOKSEOF
     '';
   };
 }

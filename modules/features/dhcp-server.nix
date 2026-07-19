@@ -50,8 +50,9 @@ in
           "option:dns-server,10.0.0.19,10.0.0.30,10.0.0.29"
         ];
         dhcp-host = reservations;
-      } // lib.optionalAttrs (cfg.interface != null) {
-        interface = cfg.interface;
+      }
+      // lib.optionalAttrs (cfg.interface != null) {
+        inherit (cfg) interface;
         bind-interfaces = true;
       };
     };

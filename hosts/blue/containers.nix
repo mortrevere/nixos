@@ -53,6 +53,24 @@ let
           proxy_buffering off;
         }
       }
+
+      server {
+        listen 80;
+        server_name blue.files.house;
+        client_max_body_size 0;
+
+        location / {
+          proxy_pass http://127.0.0.1:8089;
+          proxy_http_version 1.1;
+          proxy_set_header Host $host;
+          proxy_set_header X-Forwarded-Host $host;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header X-Forwarded-Port 80;
+          proxy_read_timeout 300s;
+          proxy_buffering off;
+        }
+      }
     }
   '';
 
@@ -140,6 +158,9 @@ in
     "d /opt/jellyfin/transcodes 0770 1000 100 -"
     "C+ /opt/jellyfin/config/branding.xml 0644 1000 100 - ${jellyfinBranding}"
     "d /opt/others 0755 root root -"
+    "d /opt/filebrowser 0755 root root -"
+    "d /opt/filebrowser/config 0750 1000 100 -"
+    "d /opt/filebrowser/database 0750 1000 100 -"
     "L+ /opt/jellyfin/media - - - - /opt/transmission/downloads"
   ];
 
@@ -163,10 +184,12 @@ in
     after = [
       "podman-transmission.service"
       "podman-jellyfin.service"
+      "podman-filebrowser.service"
     ];
     wants = [
       "podman-transmission.service"
       "podman-jellyfin.service"
+      "podman-filebrowser.service"
     ];
   };
 
@@ -213,11 +236,39 @@ in
       ];
     };
 
+    filebrowser = {
+      image = "docker.io/filebrowser/filebrowser:latest";
+      cmd = [
+        "--address=0.0.0.0"
+        "--port=8080"
+        "--root=/srv"
+        "--database=/database/filebrowser.db"
+        "--config=/config/settings.json"
+        "--noauth"
+      ];
+      volumes = [
+        "/data:/srv"
+        "/opt/filebrowser/config:/config"
+        "/opt/filebrowser/database:/database"
+      ];
+      extraOptions = [
+        "--no-healthcheck"
+        "--publish=127.0.0.1:8089:8080"
+      ];
+    };
+
   };
 
-  systemd.services.podman-jellyfin = {
-    after = [ "mount-data-drives.service" ];
-    wants = [ "mount-data-drives.service" ];
+  systemd.services = {
+    podman-jellyfin = {
+      after = [ "mount-data-drives.service" ];
+      wants = [ "mount-data-drives.service" ];
+    };
+
+    podman-filebrowser = {
+      after = [ "mount-data-drives.service" ];
+      wants = [ "mount-data-drives.service" ];
+    };
   };
 
   environment.systemPackages = with pkgs; [
@@ -226,7 +277,7 @@ in
 
   system.activationScripts.restartBlueContainers.text = ''
     if [ "''${NIXOS_ACTION:-}" = switch ] && [ -d /run/systemd/system ]; then
-      for service in transmission jellyfin; do
+      for service in transmission jellyfin filebrowser; do
         if ${pkgs.systemd}/bin/systemctl --quiet is-active "podman-$service.service"; then
           ${pkgs.systemd}/bin/systemctl restart "podman-$service.service"
         fi

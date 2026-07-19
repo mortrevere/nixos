@@ -6,7 +6,8 @@ _:
     ../../modules/server.nix
     ./hardware-configuration.nix
     ./containers.nix
-  ] ++ (if builtins.pathExists ./private.nix then [ ./private.nix ] else [ ]);
+  ]
+  ++ (if builtins.pathExists ./private.nix then [ ./private.nix ] else [ ]);
 
   boot.loader.grub.enable = false;
   boot.loader.systemd-boot.enable = true;
