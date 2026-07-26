@@ -121,15 +121,17 @@ in
             id = "${hostname}-wifi";
             type = "wifi";
             autoconnect = true;
+            autoconnect-priority = 100;
+            autoconnect-retries = 0;
           }
           // optionalInterface;
           wifi = {
             mode = "infrastructure";
-            ssid = "$${cfg.wifi.ssidVariable}";
+            ssid = "$" + cfg.wifi.ssidVariable;
           };
           wifi-security = {
             key-mgmt = "wpa-psk";
-            psk = "$${cfg.wifi.pskVariable}";
+            psk = "$" + cfg.wifi.pskVariable;
           };
           ipv4 = {
             inherit (cfg.wifi.ipv4) method;

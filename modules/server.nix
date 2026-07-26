@@ -12,6 +12,7 @@ in
 {
   imports = [
     ./features/autobackup.nix
+    ./features/backlight.nix
     ./features/home-dns.nix
     ./features/home-server.nix
     ./features/public-ip-metrics.nix
