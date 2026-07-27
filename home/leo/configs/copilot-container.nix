@@ -92,14 +92,27 @@ let
 
     IMAGE_NAME="''${IMAGE_NAME:-${cfg.imageName}}"
     WORKDIR_IN_CONTAINER="/workspace"
+    GLOBAL_RESUME_DIR="/copilot-state/global-resume"
 
     UID_VALUE="$(id -u)"
     GID_VALUE="$(id -g)"
     GROUPS_CSV="$(id -G | tr ' ' ',')"
     CALLER_PWD="$(pwd)"
     HOST_COPILOT_HOME="''${HOST_COPILOT_HOME:-${config.xdg.dataHome}/copilot-cli}"
+    USE_GLOBAL_RESUME=false
+
+    for arg in "$@"; do
+      case "''${arg}" in
+        --resume|--resume=*|-r|-r=*)
+          USE_GLOBAL_RESUME=true
+          ;;
+      esac
+    done
 
     mkdir -p "''${HOST_COPILOT_HOME}"
+    if [ "''${USE_GLOBAL_RESUME}" = true ]; then
+      mkdir -p "''${HOST_COPILOT_HOME}/global-resume"
+    fi
 
     ENGINE="''${CONTAINER_ENGINE:-${cfg.engine}}"
     DOCKERFILE_PATH="''${XDG_CONFIG_HOME:-$HOME/.config}/copilot-container/Dockerfile"
@@ -140,6 +153,8 @@ let
       : # drop into container shell as-is
     elif [ "$#" -eq 0 ]; then
       set -- copilot "''${COPILOT_DEFAULTS[@]}"
+    elif [ "''${USE_GLOBAL_RESUME}" = true ]; then
+      set -- copilot "''${COPILOT_DEFAULTS[@]}" -C "''${GLOBAL_RESUME_DIR}" --add-dir "''${WORKDIR_IN_CONTAINER}" "$@"
     else
       set -- copilot "''${COPILOT_DEFAULTS[@]}" "$@"
     fi
@@ -232,6 +247,7 @@ in
 
     home.activation.copilotContainerDirs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
             mkdir -p "${config.xdg.dataHome}/copilot-cli"
+            mkdir -p "${config.xdg.dataHome}/copilot-cli/global-resume"
             mkdir -p "${config.xdg.dataHome}/copilot-cli/hooks"
             mkdir -p "${config.home.homeDirectory}/.local/bin"
             mkdir -p "${config.xdg.configHome}/copilot-container"
