@@ -9,6 +9,9 @@ _:
     allow_remote_control yes
     listen_on unix:/tmp/kitty-socket
 
+    # Disable paste confirmation warnings (keep URL auto-quoting at prompt)
+    paste_actions quote-urls-at-prompt
+
     # Disable synthetic bold
     disable_ligatures never
     bold_font auto

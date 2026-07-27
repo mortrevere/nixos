@@ -44,6 +44,8 @@
       cconf = "grep -E -v '#|^$'";
       bat = "bat --paging=never";
       cssh = "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null";
+      sshp = "ssh bastion-prod";
+      ssht = "ssh bastion-test";
       watch = "watch "; # trailing space allows alias expansion in watch argument
       fcc = "awk '{print $1}'";
       grep = "grep --color=auto";
