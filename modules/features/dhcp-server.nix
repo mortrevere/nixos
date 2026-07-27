@@ -56,5 +56,17 @@ in
         bind-interfaces = true;
       };
     };
+
+    systemd.services.dnsmasq = {
+      serviceConfig = {
+        Restart = "on-failure";
+        RestartSec = "10s";
+      };
+
+      unitConfig = {
+        StartLimitIntervalSec = "2h";
+        StartLimitBurst = 720;
+      };
+    };
   };
 }

@@ -248,6 +248,7 @@ in
       ];
       volumes = [
         "/data:/srv"
+        "/opt:/srv/opt"
         "/opt/filebrowser/config:/config"
         "/opt/filebrowser/database:/database"
       ];
