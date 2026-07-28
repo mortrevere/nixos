@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>links.house</title>
+    <title>links</title>
     <style>
       :root {
         color-scheme: dark;
@@ -155,7 +155,7 @@
   <body>
     <main>
       <header>
-        <h1>links.house</h1>
+        <h1>links</h1>
         <p class="meta">home services</p>
       </header>
 
@@ -163,8 +163,8 @@
         <h2 id="services-heading">Services</h2>
         <ul class="grid">
           <li class="card" data-probe="/probe/hyperion">
-            <a href="http://hyperion.house/">
-              <span class="service">hyperion.house</span>
+            <a href="https://hyperion.house.leo.surf/">
+              <span class="service">hyperion</span>
               <output
                 class="status"
                 data-state="pending"
@@ -173,8 +173,8 @@
             </a>
           </li>
           <li class="card" data-probe="/probe/cinema">
-            <a href="http://cinema.house/">
-              <span class="service">cinema.house</span>
+            <a href="https://cinema.house.leo.surf/">
+              <span class="service">cinema</span>
               <output
                 class="status"
                 data-state="pending"
@@ -183,8 +183,8 @@
             </a>
           </li>
           <li class="card" data-probe="/probe/nabu">
-            <a href="http://nabu.house/">
-              <span class="service">nabu.house</span>
+            <a href="https://nabu.house.leo.surf/">
+              <span class="service">nabu</span>
               <output
                 class="status"
                 data-state="pending"
@@ -199,8 +199,8 @@
         <h2 id="support-heading">Support</h2>
         <ul class="grid">
           <li class="card" data-probe="/probe/docker">
-            <a href="http://docker.house/">
-              <span class="service">docker.house</span>
+            <a href="https://docker.house.leo.surf/">
+              <span class="service">docker</span>
               <output
                 class="status"
                 data-state="pending"
@@ -209,8 +209,8 @@
             </a>
           </li>
           <li class="card" data-probe="/probe/grafana">
-            <a href="http://grafana.house/">
-              <span class="service">grafana.house</span>
+            <a href="https://grafana.house.leo.surf/">
+              <span class="service">grafana</span>
               <output
                 class="status"
                 data-state="pending"
@@ -219,8 +219,8 @@
             </a>
           </li>
           <li class="card" data-probe="/probe/prometheus">
-            <a href="http://prometheus.house/">
-              <span class="service">prometheus.house</span>
+            <a href="https://prometheus.house.leo.surf/">
+              <span class="service">prometheus</span>
               <output
                 class="status"
                 data-state="pending"
@@ -229,8 +229,8 @@
             </a>
           </li>
           <li class="card" data-probe="/probe/transmission">
-            <a href="http://transmission.house/">
-              <span class="service">transmission.house</span>
+            <a href="https://transmission.house.leo.surf/">
+              <span class="service">transmission</span>
               <output
                 class="status"
                 data-state="pending"
@@ -245,8 +245,8 @@
         <h2 id="files-heading">Files</h2>
         <ul class="grid">
           <li class="card" data-probe="/probe/red-files">
-            <a href="http://red.files.house/">
-              <span class="service">red.files.house</span>
+            <a href="https://red-files.house.leo.surf/">
+              <span class="service">red-files</span>
               <output
                 class="status"
                 data-state="pending"
@@ -255,8 +255,8 @@
             </a>
           </li>
           <li class="card" data-probe="/probe/blue-files">
-            <a href="http://blue.files.house/">
-              <span class="service">blue.files.house</span>
+            <a href="https://blue-files.house.leo.surf/">
+              <span class="service">blue-files</span>
               <output
                 class="status"
                 data-state="pending"
@@ -265,8 +265,8 @@
             </a>
           </li>
           <li class="card" data-probe="/probe/black-files">
-            <a href="http://black.files.house/">
-              <span class="service">black.files.house</span>
+            <a href="https://black-files.house.leo.surf/">
+              <span class="service">black-files</span>
               <output
                 class="status"
                 data-state="pending"
@@ -280,6 +280,28 @@
 
     <script>
       (() => {
+        const HOST_SUFFIX = ".house.leo.surf";
+
+        const shortenServiceLabels = () => {
+          document.querySelectorAll(".card a").forEach((link) => {
+            const label = link.querySelector(".service");
+            if (!label) {
+              return;
+            }
+
+            try {
+              const { hostname } = new URL(link.href, window.location.href);
+              const shortName = hostname.endsWith(HOST_SUFFIX)
+                ? hostname.slice(0, -HOST_SUFFIX.length)
+                : hostname.split(".")[0];
+              label.textContent = shortName || hostname;
+              link.title = hostname;
+            } catch {
+              // Keep the static label if the href cannot be parsed.
+            }
+          });
+        };
+
         const probe = async (card) => {
           const status = card.querySelector(".status");
 
@@ -305,6 +327,7 @@
         };
 
         const start = () => {
+          shortenServiceLabels();
           refresh();
           setInterval(refresh, 10000);
         };

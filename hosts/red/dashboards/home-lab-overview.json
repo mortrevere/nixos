@@ -1214,11 +1214,11 @@
               },
               {
                 "color": "yellow",
-                "value": 1
+                "value": 0.01
               },
               {
                 "color": "red",
-                "value": 5
+                "value": 0.1
               }
             ]
           },
@@ -1303,12 +1303,12 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "abs(node_time_seconds{job=\"node\"} - time())",
+          "expr": "abs(node_timex_offset_seconds{job=\"node\"})",
           "legendFormat": "{{node}}",
           "refId": "A"
         }
       ],
-      "title": "Clock Skew by Host",
+      "title": "NTP Clock Offset by Host",
       "type": "bargauge"
     },
     {
@@ -2612,8 +2612,12 @@
                     "value": null
                   },
                   {
+                    "color": "yellow",
+                    "value": 0.01
+                  },
+                  {
                     "color": "red",
-                    "value": 80
+                    "value": 0.1
                   }
                 ]
               },
@@ -2718,13 +2722,13 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
-              "expr": "abs(node_time_seconds{job=\"node\",node=~\"$node\"} - time())",
-              "legendFormat": "skew",
+              "expr": "abs(node_timex_offset_seconds{job=\"node\",node=~\"$node\"})",
+              "legendFormat": "offset",
               "range": true,
               "refId": "A"
             }
           ],
-          "title": "Clock Skew",
+          "title": "NTP Clock Offset",
           "type": "stat"
         },
         {

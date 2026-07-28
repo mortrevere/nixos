@@ -5,6 +5,7 @@ _:
     ../../modules/base.nix
     ../../modules/server.nix
     ../../modules/features/dhcp-server.nix
+    ../../modules/features/house-leo-surf-certbot.nix
     ../../modules/features/nordvpn-gateway.nix
     ./hardware-configuration.nix
     ./containers.nix
@@ -45,6 +46,7 @@ _:
       extraInputRules = [
         "udp dport 67 accept"
         "tcp dport 80 ip saddr $private_v4 accept"
+        "tcp dport 443 ip saddr $private_v4 accept"
       ];
       extraForwardRules = [
         "iifname \"podman*\" accept"

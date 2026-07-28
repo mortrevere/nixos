@@ -121,6 +121,36 @@ sudo nixos-rebuild switch --flake '.?submodules=1#blue'
 `red.sh`, `black.sh`, and `blue.sh` deploy to their server hosts remotely over
 SSH.
 
+### Home HTTPS Certificates
+
+Red issues one OVH DNS-01 wildcard certificate for `house.leo.surf` and
+`*.house.leo.surf`, then syncs it to Blue and Black for their reverse proxies.
+Before deploying, create the OVH variables in `/etc/nixos/secrets/red.env` and
+create `/etc/nixos/secrets/cert-sync_ed25519` on Red with mode `0600`. Blue and
+Black declare the matching public key in their host configs. It authenticates
+only the restricted `cert-sync` SFTP account, which can stage certificate files
+for the local root-owned installer and cannot open a shell or use `sudo`:
+
+```nix
+{
+  houseLeoSurf.certSyncPublicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDBI8fr4dZLJ52Bj2i4LgExkFHuLIiyeUW+UitsGuA75 cert-sync";
+}
+```
+
+Deploy all three hosts so the reverse proxies and Blue/Black authorized keys are
+in place, then issue or renew the certificate from Red:
+
+```bash
+./hacks/red.sh
+./hacks/blue.sh
+./hacks/black.sh
+ssh leo@10.0.0.19 'sudo systemctl start house-leo-surf-certbot.service'
+```
+
+The nginx-facing files live on every server at
+`/opt/certs/house.leo.surf/fullchain.pem` and
+`/opt/certs/house.leo.surf/privkey.pem`.
+
 ### Formatting
 
 ```bash

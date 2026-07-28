@@ -2,6 +2,31 @@
 
 let
   jellyfinTranscodeTmpfsSize = "4G";
+  certMount = "/etc/house.leo.surf";
+
+  redirectServer = serverName: ''
+    server {
+      listen 80;
+      server_name ${serverName};
+      return 301 https://$host$request_uri;
+    }
+  '';
+
+  proxyHeaders = ''
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Forwarded-Port 443;
+    proxy_read_timeout 300s;
+    proxy_buffering off;
+  '';
+
+  upgradeHeaders = ''
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+  '';
 
   reverseProxyNginxConf = pkgs.writeText "reverse-proxy-nginx.conf" ''
     events {}
@@ -15,60 +40,47 @@ let
         "" close;
       }
 
+      ${redirectServer "transmission.house.leo.surf"}
+      ${redirectServer "cinema.house.leo.surf"}
+      ${redirectServer "blue-files.house.leo.surf"}
+
       server {
-        listen 80;
-        server_name transmission.house;
+        listen 443 ssl;
+        server_name transmission.house.leo.surf;
+        ssl_certificate ${certMount}/fullchain.pem;
+        ssl_certificate_key ${certMount}/privkey.pem;
 
         location / {
           proxy_pass http://127.0.0.1:9091;
-          proxy_http_version 1.1;
-          proxy_set_header Host $host;
-          proxy_set_header X-Forwarded-Host $host;
-          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-          proxy_set_header X-Forwarded-Proto $scheme;
-          proxy_set_header X-Forwarded-Port 80;
-          proxy_set_header Upgrade $http_upgrade;
-          proxy_set_header Connection $connection_upgrade;
-          proxy_read_timeout 300s;
-          proxy_buffering off;
+          ${proxyHeaders}
+          ${upgradeHeaders}
         }
       }
 
       server {
-        listen 80;
-        server_name cinema.house;
+        listen 443 ssl;
+        server_name cinema.house.leo.surf;
+        ssl_certificate ${certMount}/fullchain.pem;
+        ssl_certificate_key ${certMount}/privkey.pem;
 
         location / {
           proxy_pass http://127.0.0.1:8096;
-          proxy_http_version 1.1;
-          proxy_set_header Host $host;
+          ${proxyHeaders}
           proxy_set_header X-Real-IP $remote_addr;
-          proxy_set_header X-Forwarded-Host $host;
-          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-          proxy_set_header X-Forwarded-Proto $scheme;
-          proxy_set_header X-Forwarded-Port 80;
-          proxy_set_header Upgrade $http_upgrade;
-          proxy_set_header Connection $connection_upgrade;
-          proxy_read_timeout 300s;
-          proxy_buffering off;
+          ${upgradeHeaders}
         }
       }
 
       server {
-        listen 80;
-        server_name blue.files.house;
+        listen 443 ssl;
+        server_name blue-files.house.leo.surf;
+        ssl_certificate ${certMount}/fullchain.pem;
+        ssl_certificate_key ${certMount}/privkey.pem;
         client_max_body_size 0;
 
         location / {
           proxy_pass http://127.0.0.1:8089;
-          proxy_http_version 1.1;
-          proxy_set_header Host $host;
-          proxy_set_header X-Forwarded-Host $host;
-          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-          proxy_set_header X-Forwarded-Proto $scheme;
-          proxy_set_header X-Forwarded-Port 80;
-          proxy_read_timeout 300s;
-          proxy_buffering off;
+          ${proxyHeaders}
         }
       }
     }
@@ -219,7 +231,7 @@ in
         PUID = "1000";
         PGID = "100";
         TZ = "Europe/Paris";
-        JELLYFIN_PublishedServerUrl = "http://cinema.house";
+        JELLYFIN_PublishedServerUrl = "https://cinema.house.leo.surf";
       };
       volumes = [
         "/opt/jellyfin/config:/config"

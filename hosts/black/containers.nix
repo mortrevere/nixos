@@ -1,6 +1,27 @@
 { pkgs, ... }:
 
 let
+  certMount = "/etc/house.leo.surf";
+
+  redirectServer = serverName: ''
+    server {
+      listen 80;
+      server_name ${serverName};
+      return 301 https://$host$request_uri;
+    }
+  '';
+
+  proxyHeaders = ''
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Forwarded-Port 443;
+    proxy_read_timeout 300s;
+    proxy_buffering off;
+  '';
+
   reverseProxyNginxConf = pkgs.writeText "reverse-proxy-nginx.conf" ''
     events {}
 
@@ -8,39 +29,32 @@ let
       include /etc/nginx/mime.types;
       default_type application/octet-stream;
 
+      ${redirectServer "docker.house.leo.surf"}
+      ${redirectServer "black-files.house.leo.surf"}
+
       server {
-        listen 80 default_server;
-        server_name _;
+        listen 443 ssl default_server;
+        server_name docker.house.leo.surf;
+        ssl_certificate ${certMount}/fullchain.pem;
+        ssl_certificate_key ${certMount}/privkey.pem;
         client_max_body_size 0;
 
         location / {
           proxy_pass http://127.0.0.1:5000;
-          proxy_http_version 1.1;
-          proxy_set_header Host $host;
-          proxy_set_header X-Forwarded-Host $host;
-          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-          proxy_set_header X-Forwarded-Proto $scheme;
-          proxy_set_header X-Forwarded-Port 80;
-          proxy_read_timeout 300s;
-          proxy_buffering off;
+          ${proxyHeaders}
         }
       }
 
       server {
-        listen 80;
-        server_name black.files.house;
+        listen 443 ssl;
+        server_name black-files.house.leo.surf;
+        ssl_certificate ${certMount}/fullchain.pem;
+        ssl_certificate_key ${certMount}/privkey.pem;
         client_max_body_size 0;
 
         location / {
           proxy_pass http://127.0.0.1:8089;
-          proxy_http_version 1.1;
-          proxy_set_header Host $host;
-          proxy_set_header X-Forwarded-Host $host;
-          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-          proxy_set_header X-Forwarded-Proto $scheme;
-          proxy_set_header X-Forwarded-Port 80;
-          proxy_read_timeout 300s;
-          proxy_buffering off;
+          ${proxyHeaders}
         }
       }
     }
