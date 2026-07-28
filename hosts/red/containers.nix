@@ -426,6 +426,7 @@ let
     http {
       include /etc/nginx/mime.types;
       default_type application/octet-stream;
+      etag off;
 
       server {
         listen 127.0.0.1:8088;
@@ -434,10 +435,16 @@ let
         index index.html;
 
         location = / {
+          add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" always;
+          add_header Pragma "no-cache" always;
+          add_header Expires "0" always;
           try_files /index.html =404;
         }
 
         location = /index.html {
+          add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" always;
+          add_header Pragma "no-cache" always;
+          add_header Expires "0" always;
           try_files /index.html =404;
         }
       }
