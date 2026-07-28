@@ -114,6 +114,38 @@ let
       mkdir -p "''${HOST_COPILOT_HOME}/global-resume"
     fi
 
+    # Carry the host Git identity into the container so commits made by the
+    # agent are authored as the real user, never as "copilot-cli" or a
+    # container-default identity.
+    HOST_GIT_NAME="$(git config --get user.name 2>/dev/null || true)"
+    HOST_GIT_EMAIL="$(git config --get user.email 2>/dev/null || true)"
+    GIT_IDENTITY_ARGS=()
+    if [ -n "''${HOST_GIT_NAME}" ]; then
+      GIT_IDENTITY_ARGS+=(
+        -e GIT_AUTHOR_NAME="''${HOST_GIT_NAME}"
+        -e GIT_COMMITTER_NAME="''${HOST_GIT_NAME}"
+      )
+    fi
+    if [ -n "''${HOST_GIT_EMAIL}" ]; then
+      GIT_IDENTITY_ARGS+=(
+        -e GIT_AUTHOR_EMAIL="''${HOST_GIT_EMAIL}"
+        -e GIT_COMMITTER_EMAIL="''${HOST_GIT_EMAIL}"
+      )
+    fi
+
+    # Mounted outside of /tmp/home: bind-mounting directly into /tmp/home
+    # would make the container engine auto-create /tmp/home as root before
+    # the container's non-root user starts, breaking later mkdir calls
+    # (e.g. copilot's own /tmp/home/.cache). GIT_CONFIG_GLOBAL (git >= 2.32)
+    # lets us point git at it without touching /tmp/home at all.
+    GITCONFIG_MOUNT_ARGS=()
+    if [ -f "''${HOME}/.gitconfig" ]; then
+      GITCONFIG_MOUNT_ARGS+=(
+        -v "''${HOME}/.gitconfig:/tmp/host-gitconfig:ro"
+        -e GIT_CONFIG_GLOBAL=/tmp/host-gitconfig
+      )
+    fi
+
     ENGINE="''${CONTAINER_ENGINE:-${cfg.engine}}"
     DOCKERFILE_PATH="''${XDG_CONFIG_HOME:-$HOME/.config}/copilot-container/Dockerfile"
 
@@ -170,6 +202,8 @@ let
       -e COPILOT_GITHUB_TOKEN="''${COPILOT_TOKEN}"
       -e GH_TOKEN="''${COPILOT_TOKEN}"
       --network=host
+      "''${GIT_IDENTITY_ARGS[@]}"
+      "''${GITCONFIG_MOUNT_ARGS[@]}"
     )
 
     if printf '%s' "''${ENGINE_INFO}" | grep -qi podman; then
@@ -261,6 +295,23 @@ in
             cat > "${config.xdg.dataHome}/copilot-cli/hooks/notify.json" << 'HOOKSEOF'
       ${notifyHooksJson}
       HOOKSEOF
+
+            # Global instructions: always regenerated from Nix config.
+            # The container carries the host Git identity (see the `copilot`
+            # wrapper script), so commits must use that identity as-is.
+            cat > "${config.xdg.dataHome}/copilot-cli/copilot-instructions.md" << 'INSTRUCTIONSEOF'
+      # Git commit authorship
+
+      This session runs inside a container that is pre-configured with the
+      host user's real Git identity (via `GIT_AUTHOR_NAME`/`GIT_AUTHOR_EMAIL`
+      and a mounted `.gitconfig`). When creating commits:
+
+      - Never override `user.name` or `user.email`.
+      - Never add a `Co-authored-by:` trailer for Copilot/the CLI.
+      - Never mention Copilot, an AI assistant, or a bot as author or co-author.
+
+      Commits must be authored solely as the host user.
+      INSTRUCTIONSEOF
     '';
   };
 }
