@@ -16,6 +16,7 @@ let
     docker = "black";
     grafana = "red";
     hyperion = "red";
+    iris = "red";
     links = "red";
     nabu = "red";
     prometheus = "red";

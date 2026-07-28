@@ -7,6 +7,7 @@ let
 
   grafanaImageTag = builtins.head (lib.splitString "+" pkgs.grafana.version);
   hyperionImage = "docker.house.leo.surf/hyperion:latest";
+  irisImage = "docker.house.leo.surf/iris:latest";
   nabuImage = "docker.house.leo.surf/nabu:latest";
   certMount = "/etc/house.leo.surf";
 
@@ -127,6 +128,7 @@ let
           grafana.house.leo.surf
           links.house.leo.surf
           hyperion.house.leo.surf
+          iris.house.leo.surf
           nabu.house.leo.surf
           prometheus.house.leo.surf
           red-files.house.leo.surf;
@@ -223,6 +225,23 @@ let
           proxy_http_version 1.1;
           proxy_pass_request_body off;
           proxy_set_header Host nabu.house.leo.surf;
+          proxy_set_header Content-Length "";
+          proxy_intercept_errors on;
+          error_page 301 302 303 307 308 = @probe_redirect;
+          add_header X-Probe-Status $upstream_status always;
+          proxy_set_header X-Forwarded-Host $host;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header X-Forwarded-Port 443;
+          proxy_read_timeout 10s;
+        }
+
+        location = /probe/iris {
+          proxy_pass http://127.0.0.1:8092/;
+          proxy_method GET;
+          proxy_http_version 1.1;
+          proxy_pass_request_body off;
+          proxy_set_header Host iris.house.leo.surf;
           proxy_set_header Content-Length "";
           proxy_intercept_errors on;
           error_page 301 302 303 307 308 = @probe_redirect;
@@ -383,6 +402,25 @@ let
 
       server {
         ${tlsConfig}
+        server_name iris.house.leo.surf;
+
+        location / {
+          proxy_pass http://127.0.0.1:8092;
+          proxy_http_version 1.1;
+          proxy_set_header Host $host;
+          proxy_set_header X-Forwarded-Host $host;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header X-Forwarded-Port 443;
+          proxy_set_header Upgrade $http_upgrade;
+          proxy_set_header Connection $connection_upgrade;
+          proxy_read_timeout 300s;
+          proxy_buffering off;
+        }
+      }
+
+      server {
+        ${tlsConfig}
         server_name prometheus.house.leo.surf;
 
         location / {
@@ -458,6 +496,7 @@ in
     "d /opt/grafana 0755 root root -"
     "d /opt/grafana/data 0750 472 472 -"
     "d /opt/hyperion 0755 root root -"
+    "d /opt/iris 0755 root root -"
     "d /opt/nabu 0755 root root -"
     "d /opt/prometheus 0755 root root -"
     "d /opt/prometheus/data 0750 65534 65534 -"
@@ -472,6 +511,7 @@ in
     after = [
       "grafana-dashboard-reconcile.service"
       "podman-hyperion.service"
+      "podman-iris.service"
       "podman-nabu.service"
       "podman-links-nginx.service"
       "podman-grafana.service"
@@ -481,6 +521,7 @@ in
     wants = [
       "grafana-dashboard-reconcile.service"
       "podman-hyperion.service"
+      "podman-iris.service"
       "podman-nabu.service"
       "podman-links-nginx.service"
       "podman-grafana.service"
@@ -552,6 +593,21 @@ in
       ];
     };
 
+    iris = {
+      image = irisImage;
+      environment = {
+        HOST = "127.0.0.1";
+        PORT = "8092";
+        SQLITE_PATH = "/opt/iris/iris.sqlite3";
+      };
+      volumes = [
+        "/opt/iris:/opt/iris"
+      ];
+      extraOptions = [
+        "--network=host"
+      ];
+    };
+
     prometheus = {
       image = "docker.io/prom/prometheus:v${pkgs.prometheus.version}";
       cmd = [
@@ -601,7 +657,7 @@ in
 
   system.activationScripts.restartRedContainers.text = ''
     if [ "''${NIXOS_ACTION:-}" = switch ] && [ -d /run/systemd/system ]; then
-      for service in prometheus grafana hyperion nabu filebrowser; do
+      for service in prometheus grafana hyperion iris nabu filebrowser; do
         if ${pkgs.systemd}/bin/systemctl --quiet is-active "podman-$service.service"; then
           ${pkgs.systemd}/bin/systemctl restart "podman-$service.service"
         fi
@@ -678,6 +734,21 @@ in
     preStart = lib.mkBefore ''
       ${pkgs.podman}/bin/podman rmi -f ${nabuImage} 2>/dev/null || true
       ${pkgs.podman}/bin/podman pull ${nabuImage}
+    '';
+  };
+
+  systemd.services.podman-iris = {
+    after = [
+      "network-online.target"
+      "podman-coredns.service"
+    ];
+    wants = [
+      "network-online.target"
+      "podman-coredns.service"
+    ];
+    preStart = lib.mkBefore ''
+      ${pkgs.podman}/bin/podman rmi -f ${irisImage} 2>/dev/null || true
+      ${pkgs.podman}/bin/podman pull ${irisImage}
     '';
   };
 

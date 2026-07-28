@@ -14,7 +14,7 @@ static Wi-Fi address and systemd-boot with an EFI `/boot` partition.
 
 The proxy exposes `grafana.house.leo.surf`, `prometheus.house.leo.surf`,
 `links.house.leo.surf`, `hyperion.house.leo.surf`, and
-`nabu.house.leo.surf`. File Browser is available at
+`nabu.house.leo.surf`, and `iris.house.leo.surf`. File Browser is available at
 `red-files.house.leo.surf`. HTTP redirects to HTTPS, and access is restricted
 to private IPv4 addresses.
 
