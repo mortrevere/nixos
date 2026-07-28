@@ -1,6 +1,10 @@
 { pkgs, ... }:
 
 {
+  homeServer.irisNotify.serviceNames = [
+    "move-completed-films"
+  ];
+
   systemd.services.move-completed-films = {
     description = "Archive completed Transmission films after 24 hours";
     after = [ "mount-data-drives.service" ];

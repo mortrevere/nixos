@@ -37,6 +37,10 @@ in
   };
 
   config = lib.mkIf cfg.enable {
+    homeServer.irisNotify.serviceNames = [
+      "dnsmasq"
+    ];
+
     services.dnsmasq = {
       enable = true;
       resolveLocalQueries = false;

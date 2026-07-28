@@ -112,6 +112,10 @@ in
       certbot
     ];
 
+    homeServer.irisNotify.serviceNames = [
+      "house-leo-surf-certbot"
+    ];
+
     systemd.tmpfiles.rules = [
       "d /opt/certs 0755 root root -"
       "d ${certDir} 0755 root root -"

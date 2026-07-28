@@ -1,4 +1,5 @@
 {
+  config,
   lib,
   pkgs,
   hostname,
@@ -51,6 +52,8 @@ let
       hour = "3";
     };
 
+  notifyAttr = builtins.toJSON { inherit hostname; };
+
   configFile = (pkgs.formats.json { }).generate "autobackup-${hostname}.json" {
     jobs = 8;
     destination = {
@@ -88,7 +91,7 @@ in
 {
   services.cron.enable = true;
   services.cron.systemCronJobs = [
-    "${schedule.minute} ${schedule.hour} * * * root if [ -r ${identityFile} ]; then ${autobackup}/bin/autobackup -config ${configFile} > ${logFile} 2>&1; else echo 'missing autobackup identity file: ${identityFile}' > ${logFile}; exit 1; fi"
+    "${schedule.minute} ${schedule.hour} * * * root if [ -r ${identityFile} ]; then ${autobackup}/bin/autobackup -config ${configFile} > ${logFile} 2>&1; status=$?; else echo 'missing autobackup identity file: ${identityFile}' > ${logFile}; status=1; fi; if [ \"$status\" -eq 0 ]; then ${config.homeServer.irisNotify.package}/bin/iris-notify -t autobackup -a ${lib.escapeShellArg notifyAttr} finished; else ${config.homeServer.irisNotify.package}/bin/iris-notify -t autobackup -a ${lib.escapeShellArg notifyAttr} failed; fi; exit \"$status\""
   ];
 
   systemd.tmpfiles.rules = [

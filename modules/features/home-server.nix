@@ -212,6 +212,10 @@ in
       openFirewall = false;
     };
 
+    homeServer.irisNotify.serviceNames = [
+      "mount-data-drives"
+    ];
+
     systemd.tmpfiles.rules = [ "d /data 0755 root root -" ];
     systemd.services.mount-data-drives = {
       description = "Mount USB external data drives under /data";

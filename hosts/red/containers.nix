@@ -492,6 +492,17 @@ in
 {
   virtualisation.oci-containers.backend = "podman";
 
+  homeServer.irisNotify.serviceNames = [
+    "podman-grafana"
+    "grafana-dashboard-reconcile"
+    "podman-hyperion"
+    "podman-iris"
+    "podman-nabu"
+    "podman-links-nginx"
+    "podman-prometheus"
+    "podman-filebrowser"
+  ];
+
   systemd.tmpfiles.rules = [
     "d /opt/grafana 0755 root root -"
     "d /opt/grafana/data 0750 472 472 -"

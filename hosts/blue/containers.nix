@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 
 let
   jellyfinTranscodeTmpfsSize = "4G";
@@ -156,9 +156,64 @@ let
       --request POST \
       "$base_url/Startup/Complete" >/dev/null
   '';
+
+  transmissionWatcher = pkgs.writeShellApplication {
+    name = "transmission-complete-watcher";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.findutils
+      pkgs.gnused
+      pkgs.jq
+    ];
+    text = ''
+      watch_dir=/opt/transmission/downloads/complete/films
+      state_file=/tmp/transmission-watcher
+
+      current="$(mktemp "$state_file.current.XXXXXX")"
+      trap 'rm -f "$current"' EXIT
+
+      if [ -d "$watch_dir" ]; then
+        find "$watch_dir" -mindepth 1 -printf '%P\n' |
+          sed 's#^#films/#' |
+          sort > "$current"
+      else
+        : > "$current"
+      fi
+
+      if [ ! -e "$state_file" ]; then
+        install -m 0644 "$current" "$state_file"
+        exit 0
+      fi
+
+      new_paths="$(
+        comm -13 "$state_file" "$current" |
+          jq -R . |
+          jq -s .
+      )"
+
+      install -m 0644 "$current" "$state_file"
+
+      if [ "$new_paths" = "[]" ]; then
+        exit 0
+      fi
+
+      attr="$(jq -cn --argjson files "$new_paths" '{files: $files}')"
+      ${config.homeServer.irisNotify.package}/bin/iris-notify \
+        -t transmission \
+        -a "$attr" \
+        "completed downloads changed"
+    '';
+  };
 in
 {
   virtualisation.oci-containers.backend = "podman";
+
+  homeServer.irisNotify.serviceNames = [
+    "podman-transmission"
+    "podman-jellyfin"
+    "podman-filebrowser"
+    "jellyfin-bootstrap"
+  ];
 
   systemd.tmpfiles.rules = [
     "d /opt/transmission 0755 root root -"
@@ -286,7 +341,15 @@ in
 
   environment.systemPackages = with pkgs; [
     podman-compose
+    transmissionWatcher
   ];
+
+  services.cron = {
+    enable = true;
+    systemCronJobs = [
+      "*/5 * * * * root ${transmissionWatcher}/bin/transmission-complete-watcher"
+    ];
+  };
 
   system.activationScripts.restartBlueContainers.text = ''
     if [ "''${NIXOS_ACTION:-}" = switch ] && [ -d /run/systemd/system ]; then

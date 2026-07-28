@@ -63,6 +63,11 @@ in
 {
   virtualisation.oci-containers.backend = "podman";
 
+  homeServer.irisNotify.serviceNames = [
+    "podman-docker-registry"
+    "podman-filebrowser"
+  ];
+
   systemd.tmpfiles.rules = [
     "d /opt/docker-registry 0755 root root -"
     "d /opt/filebrowser 0755 root root -"

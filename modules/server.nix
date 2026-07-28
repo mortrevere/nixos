@@ -51,6 +51,7 @@ in
     ./features/backlight.nix
     ./features/home-dns.nix
     ./features/home-server.nix
+    ./features/iris-notify.nix
     ./features/public-ip-metrics.nix
   ];
 
@@ -111,6 +112,12 @@ in
     };
 
     virtualisation.oci-containers.backend = lib.mkDefault "podman";
+
+    homeServer.irisNotify.serviceNames =
+      [ "podman-reverse-proxy" ]
+      ++ lib.optionals (config.houseLeoSurf.certSyncPublicKey != null) [
+        "house-leo-surf-cert-sync-install"
+      ];
 
     virtualisation.oci-containers.containers.reverse-proxy = {
       image = "docker.io/library/nginx:1.27-alpine";
