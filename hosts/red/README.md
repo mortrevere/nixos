@@ -31,6 +31,7 @@ CERTBOT_EMAIL=you@example.com
 CERTBOT_OVH_APPLICATION_KEY=your-ovh-application-key
 CERTBOT_OVH_APPLICATION_SECRET=your-ovh-application-secret
 CERTBOT_OVH_CONSUMER_KEY=your-ovh-consumer-key
+IRIS_NTFY_TOPIC=your-ntfy-topic
 ```
 
 The OVH token only needs these permissions for the `leo.surf` zone:
@@ -78,7 +79,8 @@ stable `tun-nord` interface. Red forwards and masquerades LAN traffic through
 that tunnel. If every configured profile fails, the watchdog tears down stale
 VPN routes and leaves internet-bound traffic using the physical router at
 `10.0.0.1`; local private destinations are not forwarded through this fallback
-path. Profile switches, VPN recovery, and fallback events notify Iris.
+path. The watchdog only restarts or switches profiles after repeated failed
+checks. Profile switches, VPN recovery, and fallback events notify Iris.
 
 ```sh
 systemctl status openvpn-nordvpn nordvpn-gateway-watchdog.timer dnsmasq podman-coredns

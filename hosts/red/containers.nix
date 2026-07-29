@@ -615,6 +615,9 @@ in
 
     iris = {
       image = irisImage;
+      environmentFiles = [
+        "/run/podman-iris/ntfy-forward.env"
+      ];
       environment = {
         HOST = "127.0.0.1";
         PORT = "8092";
@@ -767,6 +770,19 @@ in
       "podman-coredns.service"
     ];
     preStart = lib.mkBefore ''
+      set -a
+      . /etc/nixos/secrets/red.env
+      set +a
+
+      if [ -z "''${IRIS_NTFY_TOPIC:-}" ]; then
+        echo "IRIS_NTFY_TOPIC must be set in /etc/nixos/secrets/red.env" >&2
+        exit 1
+      fi
+
+      install -d -m 0755 /run/podman-iris
+      install -m 0600 /dev/null /run/podman-iris/ntfy-forward.env
+      printf 'NTFY_FORWARD=%s\n' "$IRIS_NTFY_TOPIC" > /run/podman-iris/ntfy-forward.env
+
       ${pkgs.podman}/bin/podman rmi -f ${irisImage} 2>/dev/null || true
       ${pkgs.podman}/bin/podman pull ${irisImage}
     '';
