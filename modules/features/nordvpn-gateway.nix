@@ -90,10 +90,10 @@ let
     name = "nordvpn-gateway-watchdog";
     runtimeInputs = [
       pkgs.coreutils
+      pkgs.curl
       pkgs.glibc.bin
       pkgs.gnugrep
       pkgs.iproute2
-      pkgs.iputils
       pkgs.jq
       pkgs.systemd
       pkgs.util-linux
@@ -103,11 +103,13 @@ let
       state_dir=/var/lib/nordvpn-gateway
       active_file="$state_dir/active-profile"
       status_file="$state_dir/status"
+      failure_count_file="$state_dir/failure-count"
       lock_file=/run/nordvpn-gateway-watchdog.lock
       profiles=(
 ${profileArray}
       )
       connect_timeout=${toString cfg.connectTimeoutSec}
+      failure_threshold=${toString cfg.failureThreshold}
 
       mkdir -p "$state_dir"
 
@@ -115,11 +117,13 @@ ${profileArray}
         message=$1
         profile=''${2:-}
         status=''${3:-}
+        previous=''${4:-}
         attr="$(
           jq -cn \
             --arg profile "$profile" \
             --arg status "$status" \
-            '{profile: $profile, status: $status}'
+            --arg previous "$previous" \
+            '{profile: $profile, status: $status, previous: $previous}'
         )"
         if command -v iris-notify >/dev/null 2>&1; then
           iris-notify -t nordvpn-gateway -a "$attr" "$message" || true
@@ -134,13 +138,42 @@ ${profileArray}
         fi
       }
 
+      current_status() {
+        if [ -s "$status_file" ]; then
+          head -n 1 "$status_file"
+        else
+          printf 'unknown\n'
+        fi
+      }
+
+      record_vpn() {
+        profile=$1
+        printf 'vpn:%s\n' "$profile" > "$status_file"
+        rm -f "$failure_count_file"
+      }
+
+      record_failure() {
+        failures=0
+        if [ -s "$failure_count_file" ]; then
+          failures="$(head -n 1 "$failure_count_file")"
+        fi
+        case "$failures" in
+          ""|*[!0-9]*)
+            failures=0
+            ;;
+        esac
+        failures=$((failures + 1))
+        printf '%s\n' "$failures" > "$failure_count_file"
+        [ "$failures" -ge "$failure_threshold" ]
+      }
+
       vpn_healthy() {
+        systemctl is-active --quiet openvpn-nordvpn.service || return 1
         ip link show tun-nord >/dev/null 2>&1 || return 1
         ip route | grep -Eq '^0\.0\.0\.0/1 .* dev tun-nord( |$)' || return 1
         ip route | grep -Eq '^128\.0\.0\.0/1 .* dev tun-nord( |$)' || return 1
         ip route get 1.1.1.1 2>/dev/null | grep -q ' dev tun-nord ' || return 1
-        ping -c 1 -W 2 1.1.1.1 >/dev/null 2>&1 || return 1
-        timeout 5 getent hosts google.com >/dev/null 2>&1 || return 1
+        curl --fail --silent --show-error --interface tun-nord --max-time 10 https://ifconfig.me >/dev/null 2>&1 || return 1
       }
 
       wait_for_health() {
@@ -158,36 +191,50 @@ ${profileArray}
         flock -n 9 || exit 0
 
         active_profile="$(current_profile)"
+        previous_status="$(current_status)"
         if vpn_healthy; then
-          previous_status=
-          if [ -s "$status_file" ]; then
-            previous_status="$(head -n 1 "$status_file")"
-          fi
-          printf 'vpn\n' > "$status_file"
-          if [ "$previous_status" = "fallback" ]; then
-            notify "VPN restored" "$active_profile" "restored"
-          fi
+          record_vpn "$active_profile"
+          case "$previous_status" in
+            fallback)
+              notify "VPN restored" "$active_profile" "restored" "$previous_status"
+              ;;
+            vpn:*)
+              if [ "$previous_status" != "vpn:$active_profile" ]; then
+                notify "VPN profile active" "$active_profile" "switched" "$previous_status"
+              fi
+              ;;
+          esac
+          exit 0
+        fi
+
+        if ! record_failure; then
           exit 0
         fi
 
         for profile in "''${profiles[@]}"; do
-          notify "Trying NordVPN profile" "$profile" "switching"
           printf '%s\n' "$profile" > "$active_file"
           systemctl --no-block restart openvpn-nordvpn.service || true
           if wait_for_health; then
-            printf 'vpn\n' > "$status_file"
-            notify "VPN restored" "$profile" "restored"
+            record_vpn "$profile"
+            if [ "$profile" = "$active_profile" ]; then
+              notify "VPN restored" "$profile" "restored" "$previous_status"
+            else
+              notify "VPN switched profile" "$profile" "switched" "$active_profile"
+            fi
             exit 0
           fi
         done
 
         systemctl stop openvpn-nordvpn.service || true
         ${cleanup}/bin/nordvpn-gateway-cleanup || {
-          notify "VPN cleanup failed" "$(current_profile)" "cleanup-failed"
+          notify "VPN cleanup failed" "$(current_profile)" "cleanup-failed" "$previous_status"
           exit 1
         }
         printf 'fallback\n' > "$status_file"
-        notify "All NordVPN profiles failed; normal routing fallback is active" "$(current_profile)" "fallback"
+        rm -f "$failure_count_file"
+        if [ "$previous_status" != "fallback" ]; then
+          notify "All NordVPN profiles failed; normal routing fallback is active" "$(current_profile)" "fallback" "$previous_status"
+        fi
       ) 9>"$lock_file"
     '';
   };
@@ -235,6 +282,12 @@ in
       default = 75;
       description = "Seconds to wait for a profile to become healthy before trying the next one.";
     };
+
+    failureThreshold = lib.mkOption {
+      type = lib.types.int;
+      default = 3;
+      description = "Consecutive failed watchdog checks required before restarting or switching VPN profiles.";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -258,6 +311,10 @@ in
       {
         assertion = cfg.connectTimeoutSec > 0;
         message = "nordvpnGateway.connectTimeoutSec must be positive";
+      }
+      {
+        assertion = cfg.failureThreshold > 0;
+        message = "nordvpnGateway.failureThreshold must be positive";
       }
     ];
 
