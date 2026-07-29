@@ -74,7 +74,9 @@ let
           source = "/opt";
           destination = ".";
           verification = "audit";
-          exclude-prefixes = [ ];
+          exclude-prefixes = [
+            "certs/"
+          ];
           exclude-strings = [ ];
           delete = false;
         }

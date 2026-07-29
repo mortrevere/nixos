@@ -2,6 +2,7 @@
 
 let
   homeLan = import ../../modules/home-lan.nix;
+  nginxErrorPages = import ../../modules/nginx-error-pages.nix;
 
   yaml = pkgs.formats.yaml { };
 
@@ -138,6 +139,7 @@ let
       server {
         ${tlsConfig}
         server_name grafana.house.leo.surf;
+        ${nginxErrorPages.serverSnippet}
 
         location / {
           proxy_pass http://127.0.0.1:3001;
@@ -157,6 +159,7 @@ let
       server {
         ${tlsConfig}
         server_name links.house.leo.surf;
+        ${nginxErrorPages.serverSnippet}
 
         location / {
           proxy_pass http://127.0.0.1:8088;
@@ -365,6 +368,7 @@ let
       server {
         ${tlsConfig}
         server_name hyperion.house.leo.surf;
+        ${nginxErrorPages.serverSnippet}
 
         location / {
           proxy_pass http://127.0.0.1:8090;
@@ -384,6 +388,7 @@ let
       server {
         ${tlsConfig}
         server_name nabu.house.leo.surf;
+        ${nginxErrorPages.serverSnippet}
 
         location / {
           proxy_pass http://127.0.0.1:8091;
@@ -403,6 +408,7 @@ let
       server {
         ${tlsConfig}
         server_name iris.house.leo.surf;
+        ${nginxErrorPages.serverSnippet}
 
         location / {
           proxy_pass http://127.0.0.1:8092;
@@ -422,6 +428,7 @@ let
       server {
         ${tlsConfig}
         server_name prometheus.house.leo.surf;
+        ${nginxErrorPages.serverSnippet}
 
         location / {
           proxy_pass http://127.0.0.1:9090;
@@ -441,6 +448,7 @@ let
       server {
         ${tlsConfig}
         server_name red-files.house.leo.surf;
+        ${nginxErrorPages.serverSnippet}
         client_max_body_size 0;
 
         location / {
@@ -469,6 +477,7 @@ let
       server {
         listen 127.0.0.1:8088;
         server_name _;
+        ${nginxErrorPages.serverSnippet}
         root /usr/share/nginx/html;
         index index.html;
 

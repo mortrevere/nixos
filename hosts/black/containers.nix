@@ -2,6 +2,7 @@
 
 let
   certMount = "/etc/house.leo.surf";
+  nginxErrorPages = import ../../modules/nginx-error-pages.nix;
 
   redirectServer = serverName: ''
     server {
@@ -37,6 +38,7 @@ let
         server_name docker.house.leo.surf;
         ssl_certificate ${certMount}/fullchain.pem;
         ssl_certificate_key ${certMount}/privkey.pem;
+        ${nginxErrorPages.serverSnippet}
         client_max_body_size 0;
 
         location / {
@@ -50,6 +52,7 @@ let
         server_name black-files.house.leo.surf;
         ssl_certificate ${certMount}/fullchain.pem;
         ssl_certificate_key ${certMount}/privkey.pem;
+        ${nginxErrorPages.serverSnippet}
         client_max_body_size 0;
 
         location / {

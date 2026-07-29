@@ -3,6 +3,7 @@
 let
   jellyfinTranscodeTmpfsSize = "4G";
   certMount = "/etc/house.leo.surf";
+  nginxErrorPages = import ../../modules/nginx-error-pages.nix;
 
   redirectServer = serverName: ''
     server {
@@ -49,6 +50,7 @@ let
         server_name transmission.house.leo.surf;
         ssl_certificate ${certMount}/fullchain.pem;
         ssl_certificate_key ${certMount}/privkey.pem;
+        ${nginxErrorPages.serverSnippet}
 
         location / {
           proxy_pass http://127.0.0.1:9091;
@@ -62,6 +64,7 @@ let
         server_name cinema.house.leo.surf;
         ssl_certificate ${certMount}/fullchain.pem;
         ssl_certificate_key ${certMount}/privkey.pem;
+        ${nginxErrorPages.serverSnippet}
 
         location / {
           proxy_pass http://127.0.0.1:8096;
@@ -76,6 +79,7 @@ let
         server_name blue-files.house.leo.surf;
         ssl_certificate ${certMount}/fullchain.pem;
         ssl_certificate_key ${certMount}/privkey.pem;
+        ${nginxErrorPages.serverSnippet}
         client_max_body_size 0;
 
         location / {
@@ -162,11 +166,10 @@ let
     runtimeInputs = [
       pkgs.coreutils
       pkgs.findutils
-      pkgs.gnused
       pkgs.jq
     ];
     text = ''
-      watch_dir=/opt/transmission/downloads/complete/films
+      watch_dir=/opt/transmission/downloads/complete
       state_file=/tmp/transmission-watcher
 
       current="$(mktemp "$state_file.current.XXXXXX")"
@@ -174,7 +177,6 @@ let
 
       if [ -d "$watch_dir" ]; then
         find "$watch_dir" -mindepth 1 -printf '%P\n' |
-          sed 's#^#films/#' |
           sort > "$current"
       else
         : > "$current"

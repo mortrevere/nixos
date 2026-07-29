@@ -8,6 +8,7 @@
 
 let
   homeLan = import ./home-lan.nix;
+  nginxErrorPages = import ./nginx-error-pages.nix;
   reverseProxyCfg = config.homeServer.reverseProxy;
   certDir = "/opt/certs/${homeLan.domain}";
   certSyncRoot = "/var/lib/house-leo-surf-cert-sync";
@@ -64,6 +65,7 @@ in
         http {
           server {
             listen 80 default_server;
+            ${nginxErrorPages.serverSnippet}
             return 404;
           }
         }
