@@ -27,8 +27,12 @@ _:
   nordvpnGateway = {
     enable = true;
     lanInterface = "wlp0s20f3";
-    profiles.be247-udp = ./nordvpn/be247.nordvpn.com.udp_2.6.ovpn;
-    activeProfile = "be247-udp";
+    profiles = {
+      be326-udp = ./nordvpn/be326.nordvpn.com.udp_2.6.ovpn;
+      be315-udp = ./nordvpn/be315.nordvpn.com.udp_2.6.ovpn;
+    };
+    activeProfile = "be326-udp";
+    fallbackProfiles = [ "be315-udp" ];
   };
 
   homeServer = {

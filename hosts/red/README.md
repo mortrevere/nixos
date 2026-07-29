@@ -73,14 +73,15 @@ the configured public resolvers. Check a local name with:
 dig @127.0.0.1 cinema.house.leo.surf
 ```
 
-NordVPN uses the selected profile in `configuration.nix` and a stable
-`tun-nord` interface. Red forwards and masquerades LAN traffic through that
-tunnel. If the tunnel is unavailable, the configured rules allow internet-bound
-traffic to use the physical router at `10.0.0.1`; local private destinations
-are not forwarded through this fallback path.
+NordVPN uses the primary and fallback profiles in `configuration.nix` and a
+stable `tun-nord` interface. Red forwards and masquerades LAN traffic through
+that tunnel. If every configured profile fails, the watchdog tears down stale
+VPN routes and leaves internet-bound traffic using the physical router at
+`10.0.0.1`; local private destinations are not forwarded through this fallback
+path. Profile switches, VPN recovery, and fallback events notify Iris.
 
 ```sh
-systemctl status openvpn-nordvpn dnsmasq podman-coredns
+systemctl status openvpn-nordvpn nordvpn-gateway-watchdog.timer dnsmasq podman-coredns
 ip -4 address show tun-nord
 ip -4 route
 curl -4 https://ifconfig.co
@@ -88,8 +89,9 @@ curl -4 https://ifconfig.co
 
 After changing the advertised gateway or resolver set, renew DHCP leases on
 clients. To switch VPN endpoints, add the `.ovpn` profile under `nordvpn/`, add
-it to `nordvpnGateway.profiles`, and change `nordvpnGateway.activeProfile`.
-Profiles must contain `dev tun` and a bare `auth-user-pass` directive.
+it to `nordvpnGateway.profiles`, set `nordvpnGateway.activeProfile`, and append
+fallbacks to `nordvpnGateway.fallbackProfiles`. Profiles must contain `dev tun`
+and a bare `auth-user-pass` directive.
 
 ## Rebuild
 

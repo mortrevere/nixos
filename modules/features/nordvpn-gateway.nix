@@ -1,17 +1,18 @@
 {
   config,
   lib,
+  pkgs,
   ...
 }:
 
 let
   cfg = config.nordvpnGateway;
-  profileExists = builtins.hasAttr cfg.activeProfile cfg.profiles;
-  selectedProfile = if profileExists then cfg.profiles.${cfg.activeProfile} else null;
-  sourceConfig = if selectedProfile != null then builtins.readFile selectedProfile else "";
-  hasTunDevice = lib.hasInfix "dev tun\n" sourceConfig;
-  hasInteractiveAuth = lib.hasInfix "auth-user-pass\n" sourceConfig;
-  effectiveConfig =
+  profileOrder = lib.unique ([ cfg.activeProfile ] ++ cfg.fallbackProfiles);
+  profileExists = name: builtins.hasAttr name cfg.profiles;
+  sourceConfig = name: builtins.readFile cfg.profiles.${name};
+  hasTunDevice = name: profileExists name && lib.hasInfix "dev tun\n" (sourceConfig name);
+  hasInteractiveAuth = name: profileExists name && lib.hasInfix "auth-user-pass\n" (sourceConfig name);
+  effectiveConfig = name:
     builtins.replaceStrings
       [
         "dev tun\n"
@@ -21,7 +22,175 @@ let
         "dev tun-nord\n"
         "auth-user-pass ${cfg.credentialsFile}\n"
       ]
-      sourceConfig;
+      (sourceConfig name);
+  profileConfigs = lib.genAttrs profileOrder (
+    name: pkgs.writeText "openvpn-config-nordvpn-${name}" (effectiveConfig name)
+  );
+  profileArray = lib.concatMapStringsSep "\n" (name: "        ${lib.escapeShellArg name}") profileOrder;
+  profileCase = lib.concatMapStringsSep "\n" (
+    name: ''
+      ${lib.escapeShellArg name})
+        printf '%s\n' ${lib.escapeShellArg "${profileConfigs.${name}}"}
+        ;;
+    ''
+  ) profileOrder;
+
+  irisNotify = lib.attrByPath [ "homeServer" "irisNotify" "package" ] null config;
+
+  cleanup = pkgs.writeShellApplication {
+    name = "nordvpn-gateway-cleanup";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.iproute2
+    ];
+    text = ''
+      if ip link show tun-nord >/dev/null 2>&1; then
+        ip route del 0.0.0.0/1 dev tun-nord >/dev/null 2>&1 || true
+        ip route del 128.0.0.0/1 dev tun-nord >/dev/null 2>&1 || true
+        ip route flush dev tun-nord >/dev/null 2>&1 || true
+        ip link delete tun-nord >/dev/null 2>&1 || true
+      fi
+    '';
+  };
+
+  launcher = pkgs.writeShellApplication {
+    name = "nordvpn-gateway-openvpn";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.openvpn
+    ];
+    text = ''
+      state_dir=/var/lib/nordvpn-gateway
+      active_file="$state_dir/active-profile"
+      mkdir -p "$state_dir"
+
+      if [ -s "$active_file" ]; then
+        active_profile="$(head -n 1 "$active_file")"
+      else
+        active_profile=${lib.escapeShellArg cfg.activeProfile}
+        printf '%s\n' "$active_profile" > "$active_file"
+      fi
+
+      profile_config="$(
+        case "$active_profile" in
+      ${profileCase}
+          *)
+            active_profile=${lib.escapeShellArg cfg.activeProfile}
+            printf '%s\n' "$active_profile" > "$active_file"
+            printf '%s\n' ${lib.escapeShellArg "${profileConfigs.${cfg.activeProfile}}"}
+            ;;
+        esac
+      )"
+
+      exec openvpn --suppress-timestamps --config "$profile_config"
+    '';
+  };
+
+  watchdog = pkgs.writeShellApplication {
+    name = "nordvpn-gateway-watchdog";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.glibc.bin
+      pkgs.gnugrep
+      pkgs.iproute2
+      pkgs.iputils
+      pkgs.jq
+      pkgs.systemd
+      pkgs.util-linux
+    ]
+    ++ lib.optional (irisNotify != null) irisNotify;
+    text = ''
+      state_dir=/var/lib/nordvpn-gateway
+      active_file="$state_dir/active-profile"
+      status_file="$state_dir/status"
+      lock_file=/run/nordvpn-gateway-watchdog.lock
+      profiles=(
+${profileArray}
+      )
+      connect_timeout=${toString cfg.connectTimeoutSec}
+
+      mkdir -p "$state_dir"
+
+      notify() {
+        message=$1
+        profile=''${2:-}
+        status=''${3:-}
+        attr="$(
+          jq -cn \
+            --arg profile "$profile" \
+            --arg status "$status" \
+            '{profile: $profile, status: $status}'
+        )"
+        if command -v iris-notify >/dev/null 2>&1; then
+          iris-notify -t nordvpn-gateway -a "$attr" "$message" || true
+        fi
+      }
+
+      current_profile() {
+        if [ -s "$active_file" ]; then
+          head -n 1 "$active_file"
+        else
+          printf '%s\n' ${lib.escapeShellArg cfg.activeProfile}
+        fi
+      }
+
+      vpn_healthy() {
+        ip link show tun-nord >/dev/null 2>&1 || return 1
+        ip route | grep -Eq '^0\.0\.0\.0/1 .* dev tun-nord( |$)' || return 1
+        ip route | grep -Eq '^128\.0\.0\.0/1 .* dev tun-nord( |$)' || return 1
+        ip route get 1.1.1.1 2>/dev/null | grep -q ' dev tun-nord ' || return 1
+        ping -c 1 -W 2 1.1.1.1 >/dev/null 2>&1 || return 1
+        timeout 5 getent hosts google.com >/dev/null 2>&1 || return 1
+      }
+
+      wait_for_health() {
+        deadline=$((SECONDS + connect_timeout))
+        while [ "$SECONDS" -lt "$deadline" ]; do
+          if vpn_healthy; then
+            return 0
+          fi
+          sleep 5
+        done
+        return 1
+      }
+
+      (
+        flock -n 9 || exit 0
+
+        active_profile="$(current_profile)"
+        if vpn_healthy; then
+          previous_status=
+          if [ -s "$status_file" ]; then
+            previous_status="$(head -n 1 "$status_file")"
+          fi
+          printf 'vpn\n' > "$status_file"
+          if [ "$previous_status" = "fallback" ]; then
+            notify "VPN restored" "$active_profile" "restored"
+          fi
+          exit 0
+        fi
+
+        for profile in "''${profiles[@]}"; do
+          notify "Trying NordVPN profile" "$profile" "switching"
+          printf '%s\n' "$profile" > "$active_file"
+          systemctl --no-block restart openvpn-nordvpn.service || true
+          if wait_for_health; then
+            printf 'vpn\n' > "$status_file"
+            notify "VPN restored" "$profile" "restored"
+            exit 0
+          fi
+        done
+
+        systemctl stop openvpn-nordvpn.service || true
+        ${cleanup}/bin/nordvpn-gateway-cleanup || {
+          notify "VPN cleanup failed" "$(current_profile)" "cleanup-failed"
+          exit 1
+        }
+        printf 'fallback\n' > "$status_file"
+        notify "All NordVPN profiles failed; normal routing fallback is active" "$(current_profile)" "fallback"
+      ) 9>"$lock_file"
+    '';
+  };
 in
 {
   options.nordvpnGateway = {
@@ -48,21 +217,47 @@ in
       type = lib.types.str;
       description = "Name of the NordVPN OpenVPN profile to activate.";
     };
+
+    fallbackProfiles = lib.mkOption {
+      type = lib.types.listOf lib.types.str;
+      default = [ ];
+      description = "Ordered NordVPN OpenVPN profiles to try after activeProfile fails.";
+    };
+
+    watchdogIntervalSec = lib.mkOption {
+      type = lib.types.int;
+      default = 60;
+      description = "How often to check and repair the NordVPN gateway tunnel.";
+    };
+
+    connectTimeoutSec = lib.mkOption {
+      type = lib.types.int;
+      default = 75;
+      description = "Seconds to wait for a profile to become healthy before trying the next one.";
+    };
   };
 
   config = lib.mkIf cfg.enable {
     assertions = [
       {
-        assertion = profileExists;
-        message = "nordvpnGateway.activeProfile must name an entry in nordvpnGateway.profiles";
+        assertion = lib.all profileExists profileOrder;
+        message = "nordvpnGateway.activeProfile and fallbackProfiles must name entries in nordvpnGateway.profiles";
       }
       {
-        assertion = hasTunDevice;
-        message = "The selected NordVPN profile must contain a 'dev tun' directive";
+        assertion = lib.all hasTunDevice profileOrder;
+        message = "Every selected NordVPN profile must contain a 'dev tun' directive";
       }
       {
-        assertion = hasInteractiveAuth;
-        message = "The selected NordVPN profile must contain a bare 'auth-user-pass' directive";
+        assertion = lib.all hasInteractiveAuth profileOrder;
+        message = "Every selected NordVPN profile must contain a bare 'auth-user-pass' directive";
+      }
+      {
+        assertion = cfg.watchdogIntervalSec > 0;
+        message = "nordvpnGateway.watchdogIntervalSec must be positive";
+      }
+      {
+        assertion = cfg.connectTimeoutSec > 0;
+        message = "nordvpnGateway.connectTimeoutSec must be positive";
       }
     ];
 
@@ -75,11 +270,43 @@ in
       "net.ipv4.conf.default.accept_redirects" = 0;
     };
 
-    services.openvpn.servers.nordvpn = {
-      autoStart = true;
-      config = effectiveConfig;
+    systemd.services.openvpn-nordvpn = {
+      description = "OpenVPN instance 'nordvpn'";
+      after = [ "network.target" ];
+      wantedBy = [ "multi-user.target" ];
+      unitConfig.ConditionPathExists = cfg.credentialsFile;
+      preStart = ''
+        ${cleanup}/bin/nordvpn-gateway-cleanup
+      '';
+      serviceConfig = {
+        Type = "notify";
+        ExecStart = "${launcher}/bin/nordvpn-gateway-openvpn";
+        Restart = "on-failure";
+        RestartSec = "10s";
+        StateDirectory = "nordvpn-gateway";
+      };
     };
 
-    systemd.services.openvpn-nordvpn.unitConfig.ConditionPathExists = cfg.credentialsFile;
+    systemd.services.nordvpn-gateway-watchdog = {
+      description = "Watch and repair the NordVPN gateway tunnel";
+      after = [ "network.target" ];
+      unitConfig.ConditionPathExists = cfg.credentialsFile;
+      serviceConfig = {
+        Type = "oneshot";
+        ExecStart = "${watchdog}/bin/nordvpn-gateway-watchdog";
+        StateDirectory = "nordvpn-gateway";
+      };
+    };
+
+    systemd.timers.nordvpn-gateway-watchdog = {
+      description = "Watch and repair the NordVPN gateway tunnel";
+      wantedBy = [ "timers.target" ];
+      timerConfig = {
+        OnBootSec = "2min";
+        OnUnitActiveSec = "${toString cfg.watchdogIntervalSec}s";
+        AccuracySec = "10s";
+        Unit = "nordvpn-gateway-watchdog.service";
+      };
+    };
   };
 }
