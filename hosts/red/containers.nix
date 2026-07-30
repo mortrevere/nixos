@@ -109,6 +109,7 @@ let
     http {
       include /etc/nginx/mime.types;
       default_type application/octet-stream;
+      access_log off;
 
       map $upstream_status $probe_status_text {
         301 "Moved Permanently";
@@ -127,6 +128,7 @@ let
         listen 80 default_server;
         server_name
           grafana.house.leo.surf
+          git.house.leo.surf
           links.house.leo.surf
           hyperion.house.leo.surf
           iris.house.leo.surf
@@ -143,6 +145,26 @@ let
 
         location / {
           proxy_pass http://127.0.0.1:3001;
+          proxy_http_version 1.1;
+          proxy_set_header Host $host;
+          proxy_set_header X-Forwarded-Host $host;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header X-Forwarded-Port 443;
+          proxy_set_header Upgrade $http_upgrade;
+          proxy_set_header Connection $connection_upgrade;
+          proxy_read_timeout 300s;
+          proxy_buffering off;
+        }
+      }
+
+      server {
+        ${tlsConfig}
+        server_name git.house.leo.surf;
+        ${nginxErrorPages.serverSnippet}
+
+        location / {
+          proxy_pass http://127.0.0.1:3002;
           proxy_http_version 1.1;
           proxy_set_header Host $host;
           proxy_set_header X-Forwarded-Host $host;
@@ -188,12 +210,46 @@ let
           proxy_read_timeout 10s;
         }
 
+        location = /probe/atv {
+          proxy_pass http://${homeLan.addresses.blue}/;
+          proxy_method GET;
+          proxy_http_version 1.1;
+          proxy_pass_request_body off;
+          proxy_set_header Host atv.house.leo.surf;
+          proxy_set_header Content-Length "";
+          proxy_intercept_errors on;
+          error_page 301 302 303 307 308 = @probe_redirect;
+          add_header X-Probe-Status $upstream_status always;
+          proxy_set_header X-Forwarded-Host $host;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header X-Forwarded-Port 443;
+          proxy_read_timeout 10s;
+        }
+
         location = /probe/grafana {
           proxy_pass http://127.0.0.1:3001/;
           proxy_method GET;
           proxy_http_version 1.1;
           proxy_pass_request_body off;
           proxy_set_header Host grafana.house.leo.surf;
+          proxy_set_header Content-Length "";
+          proxy_intercept_errors on;
+          error_page 301 302 303 307 308 = @probe_redirect;
+          add_header X-Probe-Status $upstream_status always;
+          proxy_set_header X-Forwarded-Host $host;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header X-Forwarded-Port 443;
+          proxy_read_timeout 10s;
+        }
+
+        location = /probe/git {
+          proxy_pass http://127.0.0.1:3002/;
+          proxy_method GET;
+          proxy_http_version 1.1;
+          proxy_pass_request_body off;
+          proxy_set_header Host git.house.leo.surf;
           proxy_set_header Content-Length "";
           proxy_intercept_errors on;
           error_page 301 302 303 307 308 = @probe_redirect;
@@ -472,6 +528,7 @@ let
     http {
       include /etc/nginx/mime.types;
       default_type application/octet-stream;
+      access_log off;
       etag off;
 
       server {
@@ -504,6 +561,7 @@ in
   homeServer.irisNotify.serviceNames = [
     "podman-grafana"
     "grafana-dashboard-reconcile"
+    "podman-forgejo"
     "podman-hyperion"
     "podman-iris"
     "podman-nabu"
@@ -523,6 +581,7 @@ in
     "d /opt/filebrowser 0755 root root -"
     "d /opt/filebrowser/config 0750 1000 100 -"
     "d /opt/filebrowser/database 0750 1000 100 -"
+    "d /opt/forgejo 0755 1000 1000 -"
     "d /var/lib/red-links-nginx 0755 root root -"
   ];
 
@@ -534,6 +593,7 @@ in
       "podman-iris.service"
       "podman-nabu.service"
       "podman-links-nginx.service"
+      "podman-forgejo.service"
       "podman-grafana.service"
       "podman-prometheus.service"
       "podman-filebrowser.service"
@@ -544,6 +604,7 @@ in
       "podman-iris.service"
       "podman-nabu.service"
       "podman-links-nginx.service"
+      "podman-forgejo.service"
       "podman-grafana.service"
       "podman-prometheus.service"
       "podman-filebrowser.service"
@@ -558,6 +619,7 @@ in
       ];
       environment = {
         GF_PATHS_PROVISIONING = "/var/lib/grafana/provisioning";
+        GF_LOG_LEVEL = "warn";
       };
       volumes = [
         "/opt/grafana/data:/var/lib/grafana"
@@ -575,6 +637,36 @@ in
       volumes = [
         "/var/lib/red-links-nginx/nginx.conf:/etc/nginx/nginx.conf:ro"
         "${./links/index.html}:/usr/share/nginx/html/index.html:ro"
+      ];
+      extraOptions = [
+        "--network=host"
+      ];
+    };
+
+    forgejo = {
+      image = "codeberg.org/forgejo/forgejo:16";
+      cmd = [
+        "/bin/bash"
+        "-c"
+        ''
+          cd /etc/s6/gitea
+          source ./setup
+          cd /app/gitea
+          exec su-exec "$USER" /usr/local/bin/gitea web
+        ''
+      ];
+      environment = {
+        USER_UID = "1000";
+        USER_GID = "1000";
+        FORGEJO__server__DOMAIN = "git.house.leo.surf";
+        FORGEJO__server__ROOT_URL = "https://git.house.leo.surf/";
+        FORGEJO__server__HTTP_ADDR = "127.0.0.1";
+        FORGEJO__server__HTTP_PORT = "3002";
+        FORGEJO__server__DISABLE_SSH = "true";
+        FORGEJO__log__LEVEL = "warn";
+      };
+      volumes = [
+        "/opt/forgejo:/data"
       ];
       extraOptions = [
         "--network=host"
@@ -680,7 +772,7 @@ in
 
   system.activationScripts.restartRedContainers.text = ''
     if [ "''${NIXOS_ACTION:-}" = switch ] && [ -d /run/systemd/system ]; then
-      for service in prometheus grafana hyperion iris nabu filebrowser; do
+      for service in prometheus grafana forgejo hyperion iris nabu filebrowser; do
         if ${pkgs.systemd}/bin/systemctl --quiet is-active "podman-$service.service"; then
           ${pkgs.systemd}/bin/systemctl restart "podman-$service.service"
         fi

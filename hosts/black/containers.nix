@@ -29,6 +29,7 @@ let
     http {
       include /etc/nginx/mime.types;
       default_type application/octet-stream;
+      access_log off;
 
       ${redirectServer "docker.house.leo.surf"}
       ${redirectServer "black-files.house.leo.surf"}

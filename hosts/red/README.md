@@ -1,7 +1,8 @@
 # red
 
-`red` is the home gateway and observability server at `10.0.0.19`. It uses a
-static Wi-Fi address and systemd-boot with an EFI `/boot` partition.
+`red` is the home gateway and observability server at `red.house.leo.surf`
+(`10.0.0.19`). It uses a static Wi-Fi address and systemd-boot with an EFI
+`/boot` partition.
 
 ## Services
 

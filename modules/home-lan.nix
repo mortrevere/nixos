@@ -12,8 +12,10 @@ let
   };
 
   applicationHosts = {
+    atv = "blue";
     cinema = "blue";
     docker = "black";
+    git = "red";
     grafana = "red";
     hyperion = "red";
     iris = "red";

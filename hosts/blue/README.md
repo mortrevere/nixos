@@ -1,13 +1,14 @@
 # blue
 
-`blue` is the media server at `10.0.0.30`. It uses DHCP-managed Wi-Fi and
-systemd-boot with an EFI `/boot` partition.
+`blue` is the media server at `blue.house.leo.surf` (`10.0.0.30`). It uses
+DHCP-managed Wi-Fi and systemd-boot with an EFI `/boot` partition.
 
 ## Services
 
 - CoreDNS, node exporter, public-IP metrics, and nightly `/opt` backups.
 - Transmission at `https://transmission.house.leo.surf/`.
 - Jellyfin at `https://cinema.house.leo.surf/` with Intel `/dev/dri` hardware acceleration.
+- ATV at `https://atv.house.leo.surf/` for Android TV remote control.
 - A shared nginx reverse proxy on ports 80 and 443; HTTP redirects to HTTPS.
 
 Transmission stores configuration, downloads, and watch files under
@@ -54,9 +55,11 @@ user:
 ## Checks
 
 ```sh
-systemctl status podman-transmission podman-jellyfin podman-reverse-proxy
+systemctl status podman-atv podman-transmission podman-jellyfin podman-reverse-proxy
+curl -I -H 'Host: atv.house.leo.surf' http://127.0.0.1/
 curl -I -H 'Host: transmission.house.leo.surf' http://127.0.0.1/
 curl -I -H 'Host: cinema.house.leo.surf' http://127.0.0.1/
+curl -Ik https://atv.house.leo.surf/health
 curl -Ik https://cinema.house.leo.surf/
 curl -Ik https://blue-files.house.leo.surf/
 ```

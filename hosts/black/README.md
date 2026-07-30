@@ -1,7 +1,8 @@
 # black
 
-`black` is the registry and backup server at `10.0.0.29`. It is a BIOS/GRUB
-host: GRUB installs to `/dev/sda` and OS probing is enabled.
+`black` is the registry and backup server at `black.house.leo.surf`
+(`10.0.0.29`). It is a BIOS/GRUB host: GRUB installs to `/dev/sda` and OS
+probing is enabled.
 
 ## Services
 

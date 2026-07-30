@@ -12,10 +12,16 @@ let
   homeLan = import ../home-lan.nix;
 
   dnsServers = [ "127.0.0.1" ] ++ homeLan.peerAddresses hostname;
+  mountDataDrivesNotifyAttr = builtins.toJSON { service = "mount-data-drives.service"; };
   mountDataDrives = pkgs.writeShellScript "mount-data-drives" ''
     set -euo pipefail
 
     mkdir -p /data
+    state_dir=/run/mount-data-drives
+    changed_file="$state_dir/changed"
+
+    mkdir -p "$state_dir"
+    rm -f "$changed_file"
 
     ${pkgs.util-linux}/bin/lsblk -P -p -o NAME,TYPE,TRAN,PKNAME,FSTYPE,LABEL,UUID,MOUNTPOINT |
       while IFS= read -r line; do
@@ -49,6 +55,7 @@ let
         esac
 
         ${pkgs.util-linux}/bin/mount -o "$options" "$NAME" "$target"
+        touch "$changed_file"
       done
   '';
 
@@ -212,13 +219,20 @@ in
       openFirewall = false;
     };
 
-    homeServer.irisNotify.serviceNames = [
-      "mount-data-drives"
-    ];
-
     systemd.tmpfiles.rules = [ "d /data 0755 root root -" ];
     systemd.services.mount-data-drives = {
       description = "Mount USB external data drives under /data";
+      postStart = lib.mkIf config.homeServer.irisNotify.enable ''
+        if [ -e /run/mount-data-drives/changed ]; then
+          ${config.homeServer.irisNotify.package}/bin/iris-notify \
+            -t systemctl \
+            -a ${lib.escapeShellArg mountDataDrivesNotifyAttr} \
+            started || true
+        fi
+      '';
+      unitConfig = lib.mkIf config.homeServer.irisNotify.enable {
+        OnFailure = lib.mkAfter [ "iris-systemd-failure@%n.service" ];
+      };
       serviceConfig = {
         Type = "oneshot";
         ExecStart = mountDataDrives;

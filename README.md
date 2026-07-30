@@ -99,6 +99,12 @@ server hosts.
 
 ## Usage
 
+### Hostnames
+
+Use fully qualified home hostnames for SSH and service operations:
+`red.house.leo.surf`, `blue.house.leo.surf`, and `black.house.leo.surf`.
+Do not use the old short `red.house`, `blue.house`, or `black.house` names.
+
 ### Rebuild System
 
 ```bash

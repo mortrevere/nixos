@@ -1,6 +1,7 @@
-{ config, pkgs, ... }:
+{ config, lib, pkgs, ... }:
 
 let
+  atvImage = "docker.house.leo.surf/atv:latest";
   jellyfinTranscodeTmpfsSize = "4G";
   certMount = "/etc/house.leo.surf";
   nginxErrorPages = import ../../modules/nginx-error-pages.nix;
@@ -29,12 +30,19 @@ let
     proxy_set_header Connection $connection_upgrade;
   '';
 
+  noCacheHeaders = ''
+    add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" always;
+    add_header Pragma "no-cache" always;
+    add_header Expires "0" always;
+  '';
+
   reverseProxyNginxConf = pkgs.writeText "reverse-proxy-nginx.conf" ''
     events {}
 
     http {
       include /etc/nginx/mime.types;
       default_type application/octet-stream;
+      access_log off;
 
       map $http_upgrade $connection_upgrade {
         default upgrade;
@@ -44,6 +52,7 @@ let
       ${redirectServer "transmission.house.leo.surf"}
       ${redirectServer "cinema.house.leo.surf"}
       ${redirectServer "blue-files.house.leo.surf"}
+      ${redirectServer "atv.house.leo.surf"}
 
       server {
         listen 443 ssl;
@@ -85,6 +94,21 @@ let
         location / {
           proxy_pass http://127.0.0.1:8089;
           ${proxyHeaders}
+        }
+      }
+
+      server {
+        listen 443 ssl;
+        server_name atv.house.leo.surf;
+        ssl_certificate ${certMount}/fullchain.pem;
+        ssl_certificate_key ${certMount}/privkey.pem;
+        ${nginxErrorPages.serverSnippet}
+
+        location / {
+          proxy_pass http://127.0.0.1:8090;
+          ${proxyHeaders}
+          ${upgradeHeaders}
+          ${noCacheHeaders}
         }
       }
     }
@@ -211,6 +235,7 @@ in
   virtualisation.oci-containers.backend = "podman";
 
   homeServer.irisNotify.serviceNames = [
+    "podman-atv"
     "podman-transmission"
     "podman-jellyfin"
     "podman-filebrowser"
@@ -226,6 +251,8 @@ in
     "d /opt/jellyfin/config 0755 1000 100 -"
     "d /opt/jellyfin/transcodes 0770 1000 100 -"
     "C+ /opt/jellyfin/config/branding.xml 0644 1000 100 - ${jellyfinBranding}"
+    "d /opt/atv 0755 root root -"
+    "d /opt/atv/certs 0750 root root -"
     "d /opt/others 0755 root root -"
     "d /opt/filebrowser 0755 root root -"
     "d /opt/filebrowser/config 0750 1000 100 -"
@@ -251,11 +278,13 @@ in
   homeServer.reverseProxy = {
     nginxConfig = reverseProxyNginxConf;
     after = [
+      "podman-atv.service"
       "podman-transmission.service"
       "podman-jellyfin.service"
       "podman-filebrowser.service"
     ];
     wants = [
+      "podman-atv.service"
       "podman-transmission.service"
       "podman-jellyfin.service"
       "podman-filebrowser.service"
@@ -263,6 +292,24 @@ in
   };
 
   virtualisation.oci-containers.containers = {
+    atv = {
+      image = atvImage;
+      environment = {
+        HOST = "127.0.0.1";
+        PORT = "8090";
+        CIDR = "10.0.0.0/24";
+        CERT_DIR = "/opt/atv/certs";
+        CLIENT_NAME = "ATV";
+        API_BASE_URL = "https://atv.house.leo.surf";
+      };
+      volumes = [
+        "/opt/atv:/opt/atv"
+      ];
+      extraOptions = [
+        "--network=host"
+      ];
+    };
+
     transmission = {
       image = "lscr.io/linuxserver/transmission:4.0.6";
       environment = {
@@ -355,7 +402,7 @@ in
 
   system.activationScripts.restartBlueContainers.text = ''
     if [ "''${NIXOS_ACTION:-}" = switch ] && [ -d /run/systemd/system ]; then
-      for service in transmission jellyfin filebrowser; do
+      for service in atv transmission jellyfin filebrowser; do
         if ${pkgs.systemd}/bin/systemctl --quiet is-active "podman-$service.service"; then
           ${pkgs.systemd}/bin/systemctl restart "podman-$service.service"
         fi
@@ -375,5 +422,20 @@ in
       ExecStart = jellyfinBootstrap;
       TimeoutStartSec = "30s";
     };
+  };
+
+  systemd.services.podman-atv = {
+    after = [
+      "network-online.target"
+      "podman-coredns.service"
+    ];
+    wants = [
+      "network-online.target"
+      "podman-coredns.service"
+    ];
+    preStart = lib.mkBefore ''
+      ${pkgs.podman}/bin/podman rmi -f ${atvImage} 2>/dev/null || true
+      ${pkgs.podman}/bin/podman pull ${atvImage}
+    '';
   };
 }
