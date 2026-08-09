@@ -1,8 +1,9 @@
-{ pkgs, ... }:
+{ lib, pkgs, ... }:
 
 let
   certMount = "/etc/house.leo.surf";
   nginxErrorPages = import ../../modules/nginx-error-pages.nix;
+  mnemosyneImage = "docker.house.leo.surf/mnemosyne:latest";
 
   redirectServer = serverName: ''
     server {
@@ -33,6 +34,7 @@ let
 
       ${redirectServer "docker.house.leo.surf"}
       ${redirectServer "black-files.house.leo.surf"}
+      ${redirectServer "mnemosyne.house.leo.surf"}
 
       server {
         listen 443 ssl default_server;
@@ -61,6 +63,19 @@ let
           ${proxyHeaders}
         }
       }
+
+      server {
+        listen 443 ssl;
+        server_name mnemosyne.house.leo.surf;
+        ssl_certificate ${certMount}/fullchain.pem;
+        ssl_certificate_key ${certMount}/privkey.pem;
+        ${nginxErrorPages.serverSnippet}
+
+        location / {
+          proxy_pass http://127.0.0.1:8090;
+          ${proxyHeaders}
+        }
+      }
     }
   '';
 in
@@ -70,6 +85,7 @@ in
   homeServer.irisNotify.serviceNames = [
     "podman-docker-registry"
     "podman-filebrowser"
+    "podman-mnemosyne"
   ];
 
   systemd.tmpfiles.rules = [
@@ -77,6 +93,7 @@ in
     "d /opt/filebrowser 0755 root root -"
     "d /opt/filebrowser/config 0750 1000 100 -"
     "d /opt/filebrowser/database 0750 1000 100 -"
+    "d /opt/mnemosyne 0755 root root -"
   ];
 
   homeServer.reverseProxy = {
@@ -84,10 +101,12 @@ in
     after = [
       "podman-docker-registry.service"
       "podman-filebrowser.service"
+      "podman-mnemosyne.service"
     ];
     wants = [
       "podman-docker-registry.service"
       "podman-filebrowser.service"
+      "podman-mnemosyne.service"
     ];
   };
 
@@ -127,10 +146,41 @@ in
         "--publish=127.0.0.1:8089:8080"
       ];
     };
+
+    mnemosyne = {
+      image = mnemosyneImage;
+      environment = {
+        HOST = "127.0.0.1";
+        PORT = "8090";
+        SQLITE_PATH = "/opt/mnemosyne/mnemosyne.sqlite3";
+        SALT = "mnemosyne";
+      };
+      volumes = [
+        "/opt/mnemosyne:/opt/mnemosyne"
+      ];
+      extraOptions = [
+        "--network=host"
+      ];
+    };
   };
 
   systemd.services.podman-filebrowser = {
     after = [ "mount-data-drives.service" ];
     wants = [ "mount-data-drives.service" ];
+  };
+
+  systemd.services.podman-mnemosyne = {
+    after = [
+      "network-online.target"
+      "podman-coredns.service"
+    ];
+    wants = [
+      "network-online.target"
+      "podman-coredns.service"
+    ];
+    preStart = lib.mkBefore ''
+      ${pkgs.podman}/bin/podman rmi -f ${mnemosyneImage} 2>/dev/null || true
+      ${pkgs.podman}/bin/podman pull ${mnemosyneImage}
+    '';
   };
 }

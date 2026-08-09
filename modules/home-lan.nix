@@ -17,9 +17,11 @@ let
     docker = "black";
     git = "red";
     grafana = "red";
+    heimdall = "red";
     hyperion = "red";
     iris = "red";
     links = "red";
+    mnemosyne = "black";
     nabu = "red";
     prometheus = "red";
     "black-files" = "black";

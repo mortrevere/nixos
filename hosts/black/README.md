@@ -8,12 +8,14 @@ probing is enabled.
 
 - CoreDNS, node exporter, public-IP metrics, and nightly `/opt` backups.
 - An unauthenticated Docker Registry v2 at `https://docker.house.leo.surf/`.
+- Mnemosyne encrypted memory keeper at `https://mnemosyne.house.leo.surf/`.
 - USB data-drive auto-mounting below `/data/<label-or-uuid>`.
 
 Registry data persists at `/opt/docker-registry`. The shared reverse proxy
 listens on ports 80 and 443, redirects HTTP to HTTPS, and forwards
 `docker.house.leo.surf` to the registry's loopback port 5000. File Browser is
-available at `black-files.house.leo.surf`.
+available at `black-files.house.leo.surf`. Mnemosyne listens on loopback port
+8090 and persists SQLite data at `/opt/mnemosyne/mnemosyne.sqlite3`.
 `/data/LeoBackup1` is the shared backup destination used by the server backup
 jobs.
 
@@ -46,6 +48,7 @@ systemctl status podman-docker-registry podman-reverse-proxy mount-data-drives.t
 curl -I -H 'Host: docker.house.leo.surf' http://127.0.0.1/
 curl -Ik https://docker.house.leo.surf/v2/
 curl -Ik https://black-files.house.leo.surf/
+curl -Ik https://mnemosyne.house.leo.surf/health
 findmnt /data
 ```
 

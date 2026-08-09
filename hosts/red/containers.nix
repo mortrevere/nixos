@@ -7,6 +7,7 @@ let
   yaml = pkgs.formats.yaml { };
 
   grafanaImageTag = builtins.head (lib.splitString "+" pkgs.grafana.version);
+  heimdallImage = "docker.house.leo.surf/heimdall:latest";
   hyperionImage = "docker.house.leo.surf/hyperion:latest";
   irisImage = "docker.house.leo.surf/iris:latest";
   nabuImage = "docker.house.leo.surf/nabu:latest";
@@ -129,6 +130,7 @@ let
         server_name
           grafana.house.leo.surf
           git.house.leo.surf
+          heimdall.house.leo.surf
           links.house.leo.surf
           hyperion.house.leo.surf
           iris.house.leo.surf
@@ -162,6 +164,7 @@ let
         ${tlsConfig}
         server_name git.house.leo.surf;
         ${nginxErrorPages.serverSnippet}
+        client_max_body_size 50m;
 
         location / {
           proxy_pass http://127.0.0.1:3002;
@@ -278,6 +281,23 @@ let
           proxy_read_timeout 10s;
         }
 
+        location = /probe/heimdall {
+          proxy_pass http://127.0.0.1:8093/;
+          proxy_method GET;
+          proxy_http_version 1.1;
+          proxy_pass_request_body off;
+          proxy_set_header Host heimdall.house.leo.surf;
+          proxy_set_header Content-Length "";
+          proxy_intercept_errors on;
+          error_page 301 302 303 307 308 = @probe_redirect;
+          add_header X-Probe-Status $upstream_status always;
+          proxy_set_header X-Forwarded-Host $host;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header X-Forwarded-Port 443;
+          proxy_read_timeout 10s;
+        }
+
         location = /probe/nabu {
           proxy_pass http://127.0.0.1:8091/;
           proxy_method GET;
@@ -301,6 +321,23 @@ let
           proxy_http_version 1.1;
           proxy_pass_request_body off;
           proxy_set_header Host iris.house.leo.surf;
+          proxy_set_header Content-Length "";
+          proxy_intercept_errors on;
+          error_page 301 302 303 307 308 = @probe_redirect;
+          add_header X-Probe-Status $upstream_status always;
+          proxy_set_header X-Forwarded-Host $host;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header X-Forwarded-Port 443;
+          proxy_read_timeout 10s;
+        }
+
+        location = /probe/mnemosyne {
+          proxy_pass http://${homeLan.addresses.black}/;
+          proxy_method GET;
+          proxy_http_version 1.1;
+          proxy_pass_request_body off;
+          proxy_set_header Host mnemosyne.house.leo.surf;
           proxy_set_header Content-Length "";
           proxy_intercept_errors on;
           error_page 301 302 303 307 308 = @probe_redirect;
@@ -443,6 +480,22 @@ let
 
       server {
         ${tlsConfig}
+        server_name heimdall.house.leo.surf;
+        ${nginxErrorPages.serverSnippet}
+
+        location / {
+          proxy_pass http://127.0.0.1:8093;
+          proxy_http_version 1.1;
+          proxy_set_header Host $host;
+          proxy_set_header X-Forwarded-Host $host;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header X-Forwarded-Port 443;
+        }
+      }
+
+      server {
+        ${tlsConfig}
         server_name nabu.house.leo.surf;
         ${nginxErrorPages.serverSnippet}
 
@@ -561,6 +614,7 @@ in
   homeServer.irisNotify.serviceNames = [
     "podman-grafana"
     "grafana-dashboard-reconcile"
+    "podman-heimdall"
     "podman-forgejo"
     "podman-hyperion"
     "podman-iris"
@@ -573,6 +627,7 @@ in
   systemd.tmpfiles.rules = [
     "d /opt/grafana 0755 root root -"
     "d /opt/grafana/data 0750 472 472 -"
+    "d /opt/heimdall 0755 root root -"
     "d /opt/hyperion 0755 root root -"
     "d /opt/iris 0755 root root -"
     "d /opt/nabu 0755 root root -"
@@ -589,6 +644,7 @@ in
     nginxConfig = reverseProxyNginxConf;
     after = [
       "grafana-dashboard-reconcile.service"
+      "podman-heimdall.service"
       "podman-hyperion.service"
       "podman-iris.service"
       "podman-nabu.service"
@@ -600,6 +656,7 @@ in
     ];
     wants = [
       "grafana-dashboard-reconcile.service"
+      "podman-heimdall.service"
       "podman-hyperion.service"
       "podman-iris.service"
       "podman-nabu.service"
@@ -690,6 +747,28 @@ in
       ];
     };
 
+    heimdall = {
+      image = heimdallImage;
+      environment = {
+        HOST = "127.0.0.1";
+        PORT = "8093";
+        CIDR = "10.0.0.0/24";
+        CONNTRACK_PATH = "/proc/net/nf_conntrack";
+        DHCP_LEASES_PATH = "/run/heimdall/dnsmasq.leases";
+        HOSTS_PATH = "/opt/heimdall/hosts.json";
+        KNOWN_HOSTS = "red=10.0.0.19,blue=10.0.0.30,black=10.0.0.29";
+        RETENTION_DAYS = "8";
+        SCAN_INTERVAL_SECONDS = "60";
+      };
+      volumes = [
+        "/opt/heimdall:/opt/heimdall"
+        "/var/lib/dnsmasq/dnsmasq.leases:/run/heimdall/dnsmasq.leases:ro"
+      ];
+      extraOptions = [
+        "--network=host"
+      ];
+    };
+
     nabu = {
       image = nabuImage;
       environment = {
@@ -772,7 +851,7 @@ in
 
   system.activationScripts.restartRedContainers.text = ''
     if [ "''${NIXOS_ACTION:-}" = switch ] && [ -d /run/systemd/system ]; then
-      for service in prometheus grafana forgejo hyperion iris nabu filebrowser; do
+      for service in prometheus grafana forgejo heimdall hyperion iris nabu filebrowser; do
         if ${pkgs.systemd}/bin/systemctl --quiet is-active "podman-$service.service"; then
           ${pkgs.systemd}/bin/systemctl restart "podman-$service.service"
         fi
@@ -834,6 +913,21 @@ in
     preStart = lib.mkBefore ''
       ${pkgs.podman}/bin/podman rmi -f ${hyperionImage} 2>/dev/null || true
       ${pkgs.podman}/bin/podman pull ${hyperionImage}
+    '';
+  };
+
+  systemd.services.podman-heimdall = {
+    after = [
+      "network-online.target"
+      "podman-coredns.service"
+    ];
+    wants = [
+      "network-online.target"
+      "podman-coredns.service"
+    ];
+    preStart = lib.mkBefore ''
+      ${pkgs.podman}/bin/podman rmi -f ${heimdallImage} 2>/dev/null || true
+      ${pkgs.podman}/bin/podman pull ${heimdallImage}
     '';
   };
 
