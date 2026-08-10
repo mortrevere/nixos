@@ -18,6 +18,23 @@
       export EDITOR="emacsclient -c -a emacs"
       touch /tmp/rofi
 
+      # Hyprland only exports HYPRLAND_INSTANCE_SIGNATURE into processes it
+      # spawns. Shells that inherit only the login env (TTYs, some terminals)
+      # miss it, so `hyprctl` fails. Recover it from the runtime socket dir.
+      if [[ -z "''${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
+        __hypr_dir="''${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/hypr"
+        if [[ -d "$__hypr_dir" ]]; then
+          __hypr_sig=$(
+            find "$__hypr_dir" -mindepth 2 -maxdepth 2 -name '.socket.sock' \
+              -printf '%T@ %h\n' 2>/dev/null | sort -rn | head -1 |
+              cut -d' ' -f2- | xargs -r basename
+          )
+          [[ -n "$__hypr_sig" ]] && export HYPRLAND_INSTANCE_SIGNATURE="$__hypr_sig"
+          unset __hypr_sig
+        fi
+        unset __hypr_dir
+      fi
+
       ppr() {
         local branch remote
         branch=$(git rev-parse --abbrev-ref HEAD)
