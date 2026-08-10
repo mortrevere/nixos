@@ -160,7 +160,7 @@ in
     text = ''
       #!/usr/bin/env bash
       title=$(rofi -dmenu -p "Tab title" < /dev/null)
-      sock=$(ls /tmp/kitty-socket-* 2>/dev/null | head -1)
+      sock=$(ls /tmp/kitty-socket-* 2>/dev/null | sort -t- -k3 -n | head -1)
       [ -n "$title" ] && [ -n "$sock" ] && kitty @ --to "unix:$sock" set-tab-title "$title"
     '';
   };
