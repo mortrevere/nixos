@@ -12,7 +12,7 @@
     extraFlags = toString [
       "--disable=traefik"
       "--write-kubeconfig-mode=0644"
-      "--tls-san=red.house"
+      "--tls-san=red.house.leo.surf"
     ];
   };
 

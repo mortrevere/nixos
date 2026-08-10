@@ -34,14 +34,12 @@ let
       }
       cache 300
       errors
-      log
     }
 
     .:53 {
       forward . ${lib.concatStringsSep " " homeLan.publicResolvers}
       cache 300
       errors
-      log
     }
   '';
 in

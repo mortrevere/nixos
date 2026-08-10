@@ -5,6 +5,7 @@ _:
     ../../modules/base.nix
     ../../modules/server.nix
     ../../modules/features/dhcp-server.nix
+    ../../modules/features/house-leo-surf-certbot.nix
     ../../modules/features/nordvpn-gateway.nix
     ./hardware-configuration.nix
     ./containers.nix
@@ -26,8 +27,12 @@ _:
   nordvpnGateway = {
     enable = true;
     lanInterface = "wlp0s20f3";
-    profiles.be247-udp = ./nordvpn/be247.nordvpn.com.udp_2.6.ovpn;
-    activeProfile = "be247-udp";
+    profiles = {
+      be326-udp = ./nordvpn/be326.nordvpn.com.udp_2.6.ovpn;
+      be315-udp = ./nordvpn/be315.nordvpn.com.udp_2.6.ovpn;
+    };
+    activeProfile = "be326-udp";
+    fallbackProfiles = [ "be315-udp" ];
   };
 
   homeServer = {
@@ -45,6 +50,7 @@ _:
       extraInputRules = [
         "udp dport 67 accept"
         "tcp dport 80 ip saddr $private_v4 accept"
+        "tcp dport 443 ip saddr $private_v4 accept"
       ];
       extraForwardRules = [
         "iifname \"podman*\" accept"

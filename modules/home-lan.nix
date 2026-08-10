@@ -12,23 +12,26 @@ let
   };
 
   applicationHosts = {
+    atv = "blue";
     cinema = "blue";
     docker = "black";
+    git = "red";
     grafana = "red";
     hyperion = "red";
+    iris = "red";
     links = "red";
     nabu = "red";
     prometheus = "red";
-    "black.files" = "black";
-    "blue.files" = "blue";
-    "red.files" = "red";
+    "black-files" = "black";
+    "blue-files" = "blue";
+    "red-files" = "red";
     transmission = "blue";
   };
 in
 {
   inherit addresses applicationHosts nodeNames;
 
-  domain = "house";
+  domain = "house.leo.surf";
 
   publicResolvers = [
     "1.1.1.2"

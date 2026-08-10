@@ -1,7 +1,40 @@
-{ pkgs, ... }:
+{ config, lib, pkgs, ... }:
 
 let
+  atvImage = "docker.house.leo.surf/atv:latest";
   jellyfinTranscodeTmpfsSize = "4G";
+  certMount = "/etc/house.leo.surf";
+  nginxErrorPages = import ../../modules/nginx-error-pages.nix;
+
+  redirectServer = serverName: ''
+    server {
+      listen 80;
+      server_name ${serverName};
+      return 301 https://$host$request_uri;
+    }
+  '';
+
+  proxyHeaders = ''
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Forwarded-Port 443;
+    proxy_read_timeout 300s;
+    proxy_buffering off;
+  '';
+
+  upgradeHeaders = ''
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
+  '';
+
+  noCacheHeaders = ''
+    add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" always;
+    add_header Pragma "no-cache" always;
+    add_header Expires "0" always;
+  '';
 
   reverseProxyNginxConf = pkgs.writeText "reverse-proxy-nginx.conf" ''
     events {}
@@ -9,66 +42,73 @@ let
     http {
       include /etc/nginx/mime.types;
       default_type application/octet-stream;
+      access_log off;
 
       map $http_upgrade $connection_upgrade {
         default upgrade;
         "" close;
       }
 
+      ${redirectServer "transmission.house.leo.surf"}
+      ${redirectServer "cinema.house.leo.surf"}
+      ${redirectServer "blue-files.house.leo.surf"}
+      ${redirectServer "atv.house.leo.surf"}
+
       server {
-        listen 80;
-        server_name transmission.house;
+        listen 443 ssl;
+        server_name transmission.house.leo.surf;
+        ssl_certificate ${certMount}/fullchain.pem;
+        ssl_certificate_key ${certMount}/privkey.pem;
+        ${nginxErrorPages.serverSnippet}
 
         location / {
           proxy_pass http://127.0.0.1:9091;
-          proxy_http_version 1.1;
-          proxy_set_header Host $host;
-          proxy_set_header X-Forwarded-Host $host;
-          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-          proxy_set_header X-Forwarded-Proto $scheme;
-          proxy_set_header X-Forwarded-Port 80;
-          proxy_set_header Upgrade $http_upgrade;
-          proxy_set_header Connection $connection_upgrade;
-          proxy_read_timeout 300s;
-          proxy_buffering off;
+          ${proxyHeaders}
+          ${upgradeHeaders}
         }
       }
 
       server {
-        listen 80;
-        server_name cinema.house;
+        listen 443 ssl;
+        server_name cinema.house.leo.surf;
+        ssl_certificate ${certMount}/fullchain.pem;
+        ssl_certificate_key ${certMount}/privkey.pem;
+        ${nginxErrorPages.serverSnippet}
 
         location / {
           proxy_pass http://127.0.0.1:8096;
-          proxy_http_version 1.1;
-          proxy_set_header Host $host;
+          ${proxyHeaders}
           proxy_set_header X-Real-IP $remote_addr;
-          proxy_set_header X-Forwarded-Host $host;
-          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-          proxy_set_header X-Forwarded-Proto $scheme;
-          proxy_set_header X-Forwarded-Port 80;
-          proxy_set_header Upgrade $http_upgrade;
-          proxy_set_header Connection $connection_upgrade;
-          proxy_read_timeout 300s;
-          proxy_buffering off;
+          ${upgradeHeaders}
         }
       }
 
       server {
-        listen 80;
-        server_name blue.files.house;
+        listen 443 ssl;
+        server_name blue-files.house.leo.surf;
+        ssl_certificate ${certMount}/fullchain.pem;
+        ssl_certificate_key ${certMount}/privkey.pem;
+        ${nginxErrorPages.serverSnippet}
         client_max_body_size 0;
 
         location / {
           proxy_pass http://127.0.0.1:8089;
-          proxy_http_version 1.1;
-          proxy_set_header Host $host;
-          proxy_set_header X-Forwarded-Host $host;
-          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-          proxy_set_header X-Forwarded-Proto $scheme;
-          proxy_set_header X-Forwarded-Port 80;
-          proxy_read_timeout 300s;
-          proxy_buffering off;
+          ${proxyHeaders}
+        }
+      }
+
+      server {
+        listen 443 ssl;
+        server_name atv.house.leo.surf;
+        ssl_certificate ${certMount}/fullchain.pem;
+        ssl_certificate_key ${certMount}/privkey.pem;
+        ${nginxErrorPages.serverSnippet}
+
+        location / {
+          proxy_pass http://127.0.0.1:8090;
+          ${proxyHeaders}
+          ${upgradeHeaders}
+          ${noCacheHeaders}
         }
       }
     }
@@ -144,9 +184,63 @@ let
       --request POST \
       "$base_url/Startup/Complete" >/dev/null
   '';
+
+  transmissionWatcher = pkgs.writeShellApplication {
+    name = "transmission-complete-watcher";
+    runtimeInputs = [
+      pkgs.coreutils
+      pkgs.findutils
+      pkgs.jq
+    ];
+    text = ''
+      watch_dir=/opt/transmission/downloads/complete
+      state_file=/tmp/transmission-watcher
+
+      current="$(mktemp "$state_file.current.XXXXXX")"
+      trap 'rm -f "$current"' EXIT
+
+      if [ -d "$watch_dir" ]; then
+        find "$watch_dir" -mindepth 1 -printf '%P\n' |
+          sort > "$current"
+      else
+        : > "$current"
+      fi
+
+      if [ ! -e "$state_file" ]; then
+        install -m 0644 "$current" "$state_file"
+        exit 0
+      fi
+
+      new_paths="$(
+        comm -13 "$state_file" "$current" |
+          jq -R . |
+          jq -s .
+      )"
+
+      install -m 0644 "$current" "$state_file"
+
+      if [ "$new_paths" = "[]" ]; then
+        exit 0
+      fi
+
+      attr="$(jq -cn --argjson files "$new_paths" '{files: $files}')"
+      ${config.homeServer.irisNotify.package}/bin/iris-notify \
+        -t transmission \
+        -a "$attr" \
+        "completed downloads changed"
+    '';
+  };
 in
 {
   virtualisation.oci-containers.backend = "podman";
+
+  homeServer.irisNotify.serviceNames = [
+    "podman-atv"
+    "podman-transmission"
+    "podman-jellyfin"
+    "podman-filebrowser"
+    "jellyfin-bootstrap"
+  ];
 
   systemd.tmpfiles.rules = [
     "d /opt/transmission 0755 root root -"
@@ -157,6 +251,8 @@ in
     "d /opt/jellyfin/config 0755 1000 100 -"
     "d /opt/jellyfin/transcodes 0770 1000 100 -"
     "C+ /opt/jellyfin/config/branding.xml 0644 1000 100 - ${jellyfinBranding}"
+    "d /opt/atv 0755 root root -"
+    "d /opt/atv/certs 0750 root root -"
     "d /opt/others 0755 root root -"
     "d /opt/filebrowser 0755 root root -"
     "d /opt/filebrowser/config 0750 1000 100 -"
@@ -182,11 +278,13 @@ in
   homeServer.reverseProxy = {
     nginxConfig = reverseProxyNginxConf;
     after = [
+      "podman-atv.service"
       "podman-transmission.service"
       "podman-jellyfin.service"
       "podman-filebrowser.service"
     ];
     wants = [
+      "podman-atv.service"
       "podman-transmission.service"
       "podman-jellyfin.service"
       "podman-filebrowser.service"
@@ -194,6 +292,24 @@ in
   };
 
   virtualisation.oci-containers.containers = {
+    atv = {
+      image = atvImage;
+      environment = {
+        HOST = "127.0.0.1";
+        PORT = "8090";
+        CIDR = "10.0.0.0/24";
+        CERT_DIR = "/opt/atv/certs";
+        CLIENT_NAME = "ATV";
+        API_BASE_URL = "https://atv.house.leo.surf";
+      };
+      volumes = [
+        "/opt/atv:/opt/atv"
+      ];
+      extraOptions = [
+        "--network=host"
+      ];
+    };
+
     transmission = {
       image = "lscr.io/linuxserver/transmission:4.0.6";
       environment = {
@@ -219,7 +335,7 @@ in
         PUID = "1000";
         PGID = "100";
         TZ = "Europe/Paris";
-        JELLYFIN_PublishedServerUrl = "http://cinema.house";
+        JELLYFIN_PublishedServerUrl = "https://cinema.house.leo.surf";
       };
       volumes = [
         "/opt/jellyfin/config:/config"
@@ -274,11 +390,19 @@ in
 
   environment.systemPackages = with pkgs; [
     podman-compose
+    transmissionWatcher
   ];
+
+  services.cron = {
+    enable = true;
+    systemCronJobs = [
+      "*/5 * * * * root ${transmissionWatcher}/bin/transmission-complete-watcher"
+    ];
+  };
 
   system.activationScripts.restartBlueContainers.text = ''
     if [ "''${NIXOS_ACTION:-}" = switch ] && [ -d /run/systemd/system ]; then
-      for service in transmission jellyfin filebrowser; do
+      for service in atv transmission jellyfin filebrowser; do
         if ${pkgs.systemd}/bin/systemctl --quiet is-active "podman-$service.service"; then
           ${pkgs.systemd}/bin/systemctl restart "podman-$service.service"
         fi
@@ -298,5 +422,20 @@ in
       ExecStart = jellyfinBootstrap;
       TimeoutStartSec = "30s";
     };
+  };
+
+  systemd.services.podman-atv = {
+    after = [
+      "network-online.target"
+      "podman-coredns.service"
+    ];
+    wants = [
+      "network-online.target"
+      "podman-coredns.service"
+    ];
+    preStart = lib.mkBefore ''
+      ${pkgs.podman}/bin/podman rmi -f ${atvImage} 2>/dev/null || true
+      ${pkgs.podman}/bin/podman pull ${atvImage}
+    '';
   };
 }

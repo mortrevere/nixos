@@ -41,7 +41,7 @@
       PartOf = [ "graphical-session.target" ];
     };
     Service = {
-      ExecStart = "${pkgs.firefox}/bin/firefox --kiosk http://nabu.house/panel.html";
+      ExecStart = "${pkgs.firefox}/bin/firefox --kiosk https://nabu.house.leo.surf/panel.html";
       Environment = [ "MOZ_ENABLE_WAYLAND=1" ];
       Restart = "always";
       RestartSec = 3;

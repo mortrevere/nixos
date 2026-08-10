@@ -2,12 +2,21 @@
 
 let
   homeLan = import ../../modules/home-lan.nix;
+  nginxErrorPages = import ../../modules/nginx-error-pages.nix;
 
   yaml = pkgs.formats.yaml { };
 
   grafanaImageTag = builtins.head (lib.splitString "+" pkgs.grafana.version);
-  hyperionImage = "docker.house:80/hyperion:latest";
-  nabuImage = "docker.house:80/nabu:latest";
+  hyperionImage = "docker.house.leo.surf/hyperion:latest";
+  irisImage = "docker.house.leo.surf/iris:latest";
+  nabuImage = "docker.house.leo.surf/nabu:latest";
+  certMount = "/etc/house.leo.surf";
+
+  tlsConfig = ''
+    listen 443 ssl;
+    ssl_certificate ${certMount}/fullchain.pem;
+    ssl_certificate_key ${certMount}/privkey.pem;
+  '';
 
   nodeTargets = map (name: {
     targets = [
@@ -29,8 +38,8 @@ let
     [server]
     http_addr = 127.0.0.1
     http_port = 3001
-    domain = grafana.house
-    root_url = http://grafana.house/
+    domain = grafana.house.leo.surf
+    root_url = https://grafana.house.leo.surf/
 
     [security]
     admin_user = $__env{GRAFANA_ADMIN_USER}
@@ -100,6 +109,7 @@ let
     http {
       include /etc/nginx/mime.types;
       default_type application/octet-stream;
+      access_log off;
 
       map $upstream_status $probe_status_text {
         301 "Moved Permanently";
@@ -115,8 +125,23 @@ let
       }
 
       server {
-        listen 80;
-        server_name grafana.house;
+        listen 80 default_server;
+        server_name
+          grafana.house.leo.surf
+          git.house.leo.surf
+          links.house.leo.surf
+          hyperion.house.leo.surf
+          iris.house.leo.surf
+          nabu.house.leo.surf
+          prometheus.house.leo.surf
+          red-files.house.leo.surf;
+        return 301 https://$host$request_uri;
+      }
+
+      server {
+        ${tlsConfig}
+        server_name grafana.house.leo.surf;
+        ${nginxErrorPages.serverSnippet}
 
         location / {
           proxy_pass http://127.0.0.1:3001;
@@ -125,7 +150,7 @@ let
           proxy_set_header X-Forwarded-Host $host;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
           proxy_set_header X-Forwarded-Proto $scheme;
-          proxy_set_header X-Forwarded-Port 80;
+          proxy_set_header X-Forwarded-Port 443;
           proxy_set_header Upgrade $http_upgrade;
           proxy_set_header Connection $connection_upgrade;
           proxy_read_timeout 300s;
@@ -134,8 +159,29 @@ let
       }
 
       server {
-        listen 80;
-        server_name links.house;
+        ${tlsConfig}
+        server_name git.house.leo.surf;
+        ${nginxErrorPages.serverSnippet}
+
+        location / {
+          proxy_pass http://127.0.0.1:3002;
+          proxy_http_version 1.1;
+          proxy_set_header Host $host;
+          proxy_set_header X-Forwarded-Host $host;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header X-Forwarded-Port 443;
+          proxy_set_header Upgrade $http_upgrade;
+          proxy_set_header Connection $connection_upgrade;
+          proxy_read_timeout 300s;
+          proxy_buffering off;
+        }
+      }
+
+      server {
+        ${tlsConfig}
+        server_name links.house.leo.surf;
+        ${nginxErrorPages.serverSnippet}
 
         location / {
           proxy_pass http://127.0.0.1:8088;
@@ -144,7 +190,7 @@ let
           proxy_set_header X-Forwarded-Host $host;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
           proxy_set_header X-Forwarded-Proto $scheme;
-          proxy_set_header X-Forwarded-Port 80;
+          proxy_set_header X-Forwarded-Port 443;
         }
 
         location = /probe/cinema {
@@ -152,7 +198,7 @@ let
           proxy_method GET;
           proxy_http_version 1.1;
           proxy_pass_request_body off;
-          proxy_set_header Host cinema.house;
+          proxy_set_header Host cinema.house.leo.surf;
           proxy_set_header Content-Length "";
           proxy_intercept_errors on;
           error_page 301 302 303 307 308 = @probe_redirect;
@@ -160,7 +206,24 @@ let
           proxy_set_header X-Forwarded-Host $host;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
           proxy_set_header X-Forwarded-Proto $scheme;
-          proxy_set_header X-Forwarded-Port 80;
+          proxy_set_header X-Forwarded-Port 443;
+          proxy_read_timeout 10s;
+        }
+
+        location = /probe/atv {
+          proxy_pass http://${homeLan.addresses.blue}/;
+          proxy_method GET;
+          proxy_http_version 1.1;
+          proxy_pass_request_body off;
+          proxy_set_header Host atv.house.leo.surf;
+          proxy_set_header Content-Length "";
+          proxy_intercept_errors on;
+          error_page 301 302 303 307 308 = @probe_redirect;
+          add_header X-Probe-Status $upstream_status always;
+          proxy_set_header X-Forwarded-Host $host;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header X-Forwarded-Port 443;
           proxy_read_timeout 10s;
         }
 
@@ -169,7 +232,7 @@ let
           proxy_method GET;
           proxy_http_version 1.1;
           proxy_pass_request_body off;
-          proxy_set_header Host grafana.house;
+          proxy_set_header Host grafana.house.leo.surf;
           proxy_set_header Content-Length "";
           proxy_intercept_errors on;
           error_page 301 302 303 307 308 = @probe_redirect;
@@ -177,7 +240,24 @@ let
           proxy_set_header X-Forwarded-Host $host;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
           proxy_set_header X-Forwarded-Proto $scheme;
-          proxy_set_header X-Forwarded-Port 80;
+          proxy_set_header X-Forwarded-Port 443;
+          proxy_read_timeout 10s;
+        }
+
+        location = /probe/git {
+          proxy_pass http://127.0.0.1:3002/;
+          proxy_method GET;
+          proxy_http_version 1.1;
+          proxy_pass_request_body off;
+          proxy_set_header Host git.house.leo.surf;
+          proxy_set_header Content-Length "";
+          proxy_intercept_errors on;
+          error_page 301 302 303 307 308 = @probe_redirect;
+          add_header X-Probe-Status $upstream_status always;
+          proxy_set_header X-Forwarded-Host $host;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header X-Forwarded-Port 443;
           proxy_read_timeout 10s;
         }
 
@@ -186,7 +266,7 @@ let
           proxy_method GET;
           proxy_http_version 1.1;
           proxy_pass_request_body off;
-          proxy_set_header Host hyperion.house;
+          proxy_set_header Host hyperion.house.leo.surf;
           proxy_set_header Content-Length "";
           proxy_intercept_errors on;
           error_page 301 302 303 307 308 = @probe_redirect;
@@ -194,7 +274,7 @@ let
           proxy_set_header X-Forwarded-Host $host;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
           proxy_set_header X-Forwarded-Proto $scheme;
-          proxy_set_header X-Forwarded-Port 80;
+          proxy_set_header X-Forwarded-Port 443;
           proxy_read_timeout 10s;
         }
 
@@ -203,7 +283,7 @@ let
           proxy_method GET;
           proxy_http_version 1.1;
           proxy_pass_request_body off;
-          proxy_set_header Host nabu.house;
+          proxy_set_header Host nabu.house.leo.surf;
           proxy_set_header Content-Length "";
           proxy_intercept_errors on;
           error_page 301 302 303 307 308 = @probe_redirect;
@@ -211,7 +291,24 @@ let
           proxy_set_header X-Forwarded-Host $host;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
           proxy_set_header X-Forwarded-Proto $scheme;
-          proxy_set_header X-Forwarded-Port 80;
+          proxy_set_header X-Forwarded-Port 443;
+          proxy_read_timeout 10s;
+        }
+
+        location = /probe/iris {
+          proxy_pass http://127.0.0.1:8092/;
+          proxy_method GET;
+          proxy_http_version 1.1;
+          proxy_pass_request_body off;
+          proxy_set_header Host iris.house.leo.surf;
+          proxy_set_header Content-Length "";
+          proxy_intercept_errors on;
+          error_page 301 302 303 307 308 = @probe_redirect;
+          add_header X-Probe-Status $upstream_status always;
+          proxy_set_header X-Forwarded-Host $host;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header X-Forwarded-Port 443;
           proxy_read_timeout 10s;
         }
 
@@ -220,7 +317,7 @@ let
           proxy_method GET;
           proxy_http_version 1.1;
           proxy_pass_request_body off;
-          proxy_set_header Host docker.house;
+          proxy_set_header Host docker.house.leo.surf;
           proxy_set_header Content-Length "";
           proxy_intercept_errors on;
           error_page 301 302 303 307 308 = @probe_redirect;
@@ -228,7 +325,7 @@ let
           proxy_set_header X-Forwarded-Host $host;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
           proxy_set_header X-Forwarded-Proto $scheme;
-          proxy_set_header X-Forwarded-Port 80;
+          proxy_set_header X-Forwarded-Port 443;
           proxy_read_timeout 10s;
         }
 
@@ -237,7 +334,7 @@ let
           proxy_method GET;
           proxy_http_version 1.1;
           proxy_pass_request_body off;
-          proxy_set_header Host prometheus.house;
+          proxy_set_header Host prometheus.house.leo.surf;
           proxy_set_header Content-Length "";
           proxy_intercept_errors on;
           error_page 301 302 303 307 308 = @probe_redirect;
@@ -245,7 +342,7 @@ let
           proxy_set_header X-Forwarded-Host $host;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
           proxy_set_header X-Forwarded-Proto $scheme;
-          proxy_set_header X-Forwarded-Port 80;
+          proxy_set_header X-Forwarded-Port 443;
           proxy_read_timeout 10s;
         }
 
@@ -254,7 +351,7 @@ let
           proxy_method GET;
           proxy_http_version 1.1;
           proxy_pass_request_body off;
-          proxy_set_header Host transmission.house;
+          proxy_set_header Host transmission.house.leo.surf;
           proxy_set_header Content-Length "";
           proxy_intercept_errors on;
           error_page 301 302 303 307 308 = @probe_redirect;
@@ -262,7 +359,7 @@ let
           proxy_set_header X-Forwarded-Host $host;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
           proxy_set_header X-Forwarded-Proto $scheme;
-          proxy_set_header X-Forwarded-Port 80;
+          proxy_set_header X-Forwarded-Port 443;
           proxy_read_timeout 10s;
         }
 
@@ -271,7 +368,7 @@ let
           proxy_method GET;
           proxy_http_version 1.1;
           proxy_pass_request_body off;
-          proxy_set_header Host red.files.house;
+          proxy_set_header Host red-files.house.leo.surf;
           proxy_set_header Content-Length "";
           proxy_intercept_errors on;
           error_page 301 302 303 307 308 = @probe_redirect;
@@ -279,7 +376,7 @@ let
           proxy_set_header X-Forwarded-Host $host;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
           proxy_set_header X-Forwarded-Proto $scheme;
-          proxy_set_header X-Forwarded-Port 80;
+          proxy_set_header X-Forwarded-Port 443;
           proxy_read_timeout 10s;
         }
 
@@ -288,7 +385,7 @@ let
           proxy_method GET;
           proxy_http_version 1.1;
           proxy_pass_request_body off;
-          proxy_set_header Host blue.files.house;
+          proxy_set_header Host blue-files.house.leo.surf;
           proxy_set_header Content-Length "";
           proxy_intercept_errors on;
           error_page 301 302 303 307 308 = @probe_redirect;
@@ -296,7 +393,7 @@ let
           proxy_set_header X-Forwarded-Host $host;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
           proxy_set_header X-Forwarded-Proto $scheme;
-          proxy_set_header X-Forwarded-Port 80;
+          proxy_set_header X-Forwarded-Port 443;
           proxy_read_timeout 10s;
         }
 
@@ -305,7 +402,7 @@ let
           proxy_method GET;
           proxy_http_version 1.1;
           proxy_pass_request_body off;
-          proxy_set_header Host black.files.house;
+          proxy_set_header Host black-files.house.leo.surf;
           proxy_set_header Content-Length "";
           proxy_intercept_errors on;
           error_page 301 302 303 307 308 = @probe_redirect;
@@ -313,7 +410,7 @@ let
           proxy_set_header X-Forwarded-Host $host;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
           proxy_set_header X-Forwarded-Proto $scheme;
-          proxy_set_header X-Forwarded-Port 80;
+          proxy_set_header X-Forwarded-Port 443;
           proxy_read_timeout 10s;
         }
 
@@ -325,8 +422,9 @@ let
       }
 
       server {
-        listen 80;
-        server_name hyperion.house;
+        ${tlsConfig}
+        server_name hyperion.house.leo.surf;
+        ${nginxErrorPages.serverSnippet}
 
         location / {
           proxy_pass http://127.0.0.1:8090;
@@ -335,7 +433,7 @@ let
           proxy_set_header X-Forwarded-Host $host;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
           proxy_set_header X-Forwarded-Proto $scheme;
-          proxy_set_header X-Forwarded-Port 80;
+          proxy_set_header X-Forwarded-Port 443;
           proxy_set_header Upgrade $http_upgrade;
           proxy_set_header Connection $connection_upgrade;
           proxy_read_timeout 300s;
@@ -344,8 +442,9 @@ let
       }
 
       server {
-        listen 80;
-        server_name nabu.house;
+        ${tlsConfig}
+        server_name nabu.house.leo.surf;
+        ${nginxErrorPages.serverSnippet}
 
         location / {
           proxy_pass http://127.0.0.1:8091;
@@ -354,7 +453,7 @@ let
           proxy_set_header X-Forwarded-Host $host;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
           proxy_set_header X-Forwarded-Proto $scheme;
-          proxy_set_header X-Forwarded-Port 80;
+          proxy_set_header X-Forwarded-Port 443;
           proxy_set_header Upgrade $http_upgrade;
           proxy_set_header Connection $connection_upgrade;
           proxy_read_timeout 300s;
@@ -363,8 +462,29 @@ let
       }
 
       server {
-        listen 80;
-        server_name prometheus.house;
+        ${tlsConfig}
+        server_name iris.house.leo.surf;
+        ${nginxErrorPages.serverSnippet}
+
+        location / {
+          proxy_pass http://127.0.0.1:8092;
+          proxy_http_version 1.1;
+          proxy_set_header Host $host;
+          proxy_set_header X-Forwarded-Host $host;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header X-Forwarded-Port 443;
+          proxy_set_header Upgrade $http_upgrade;
+          proxy_set_header Connection $connection_upgrade;
+          proxy_read_timeout 300s;
+          proxy_buffering off;
+        }
+      }
+
+      server {
+        ${tlsConfig}
+        server_name prometheus.house.leo.surf;
+        ${nginxErrorPages.serverSnippet}
 
         location / {
           proxy_pass http://127.0.0.1:9090;
@@ -373,7 +493,7 @@ let
           proxy_set_header X-Forwarded-Host $host;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
           proxy_set_header X-Forwarded-Proto $scheme;
-          proxy_set_header X-Forwarded-Port 80;
+          proxy_set_header X-Forwarded-Port 443;
           proxy_set_header Upgrade $http_upgrade;
           proxy_set_header Connection $connection_upgrade;
           proxy_read_timeout 300s;
@@ -382,8 +502,9 @@ let
       }
 
       server {
-        listen 80;
-        server_name red.files.house;
+        ${tlsConfig}
+        server_name red-files.house.leo.surf;
+        ${nginxErrorPages.serverSnippet}
         client_max_body_size 0;
 
         location / {
@@ -393,7 +514,7 @@ let
           proxy_set_header X-Forwarded-Host $host;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
           proxy_set_header X-Forwarded-Proto $scheme;
-          proxy_set_header X-Forwarded-Port 80;
+          proxy_set_header X-Forwarded-Port 443;
           proxy_read_timeout 300s;
           proxy_buffering off;
         }
@@ -407,18 +528,27 @@ let
     http {
       include /etc/nginx/mime.types;
       default_type application/octet-stream;
+      access_log off;
+      etag off;
 
       server {
         listen 127.0.0.1:8088;
         server_name _;
+        ${nginxErrorPages.serverSnippet}
         root /usr/share/nginx/html;
         index index.html;
 
         location = / {
+          add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" always;
+          add_header Pragma "no-cache" always;
+          add_header Expires "0" always;
           try_files /index.html =404;
         }
 
         location = /index.html {
+          add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" always;
+          add_header Pragma "no-cache" always;
+          add_header Expires "0" always;
           try_files /index.html =404;
         }
       }
@@ -428,16 +558,30 @@ in
 {
   virtualisation.oci-containers.backend = "podman";
 
+  homeServer.irisNotify.serviceNames = [
+    "podman-grafana"
+    "grafana-dashboard-reconcile"
+    "podman-forgejo"
+    "podman-hyperion"
+    "podman-iris"
+    "podman-nabu"
+    "podman-links-nginx"
+    "podman-prometheus"
+    "podman-filebrowser"
+  ];
+
   systemd.tmpfiles.rules = [
     "d /opt/grafana 0755 root root -"
     "d /opt/grafana/data 0750 472 472 -"
     "d /opt/hyperion 0755 root root -"
+    "d /opt/iris 0755 root root -"
     "d /opt/nabu 0755 root root -"
     "d /opt/prometheus 0755 root root -"
     "d /opt/prometheus/data 0750 65534 65534 -"
     "d /opt/filebrowser 0755 root root -"
     "d /opt/filebrowser/config 0750 1000 100 -"
     "d /opt/filebrowser/database 0750 1000 100 -"
+    "d /opt/forgejo 0755 1000 1000 -"
     "d /var/lib/red-links-nginx 0755 root root -"
   ];
 
@@ -446,8 +590,10 @@ in
     after = [
       "grafana-dashboard-reconcile.service"
       "podman-hyperion.service"
+      "podman-iris.service"
       "podman-nabu.service"
       "podman-links-nginx.service"
+      "podman-forgejo.service"
       "podman-grafana.service"
       "podman-prometheus.service"
       "podman-filebrowser.service"
@@ -455,8 +601,10 @@ in
     wants = [
       "grafana-dashboard-reconcile.service"
       "podman-hyperion.service"
+      "podman-iris.service"
       "podman-nabu.service"
       "podman-links-nginx.service"
+      "podman-forgejo.service"
       "podman-grafana.service"
       "podman-prometheus.service"
       "podman-filebrowser.service"
@@ -471,6 +619,7 @@ in
       ];
       environment = {
         GF_PATHS_PROVISIONING = "/var/lib/grafana/provisioning";
+        GF_LOG_LEVEL = "warn";
       };
       volumes = [
         "/opt/grafana/data:/var/lib/grafana"
@@ -488,6 +637,36 @@ in
       volumes = [
         "/var/lib/red-links-nginx/nginx.conf:/etc/nginx/nginx.conf:ro"
         "${./links/index.html}:/usr/share/nginx/html/index.html:ro"
+      ];
+      extraOptions = [
+        "--network=host"
+      ];
+    };
+
+    forgejo = {
+      image = "codeberg.org/forgejo/forgejo:16";
+      cmd = [
+        "/bin/bash"
+        "-c"
+        ''
+          cd /etc/s6/gitea
+          source ./setup
+          cd /app/gitea
+          exec su-exec "$USER" /usr/local/bin/gitea web
+        ''
+      ];
+      environment = {
+        USER_UID = "1000";
+        USER_GID = "1000";
+        FORGEJO__server__DOMAIN = "git.house.leo.surf";
+        FORGEJO__server__ROOT_URL = "https://git.house.leo.surf/";
+        FORGEJO__server__HTTP_ADDR = "127.0.0.1";
+        FORGEJO__server__HTTP_PORT = "3002";
+        FORGEJO__server__DISABLE_SSH = "true";
+        FORGEJO__log__LEVEL = "warn";
+      };
+      volumes = [
+        "/opt/forgejo:/data"
       ];
       extraOptions = [
         "--network=host"
@@ -526,6 +705,24 @@ in
       ];
     };
 
+    iris = {
+      image = irisImage;
+      environmentFiles = [
+        "/run/podman-iris/ntfy-forward.env"
+      ];
+      environment = {
+        HOST = "127.0.0.1";
+        PORT = "8092";
+        SQLITE_PATH = "/opt/iris/iris.sqlite3";
+      };
+      volumes = [
+        "/opt/iris:/opt/iris"
+      ];
+      extraOptions = [
+        "--network=host"
+      ];
+    };
+
     prometheus = {
       image = "docker.io/prom/prometheus:v${pkgs.prometheus.version}";
       cmd = [
@@ -535,7 +732,7 @@ in
         "--storage.tsdb.min-block-duration=24h"
         "--storage.tsdb.max-block-duration=24h"
         "--web.listen-address=127.0.0.1:9090"
-        "--web.external-url=http://prometheus.house/"
+        "--web.external-url=https://prometheus.house.leo.surf/"
       ];
       volumes = [
         "/opt/prometheus/data:/prometheus"
@@ -575,7 +772,7 @@ in
 
   system.activationScripts.restartRedContainers.text = ''
     if [ "''${NIXOS_ACTION:-}" = switch ] && [ -d /run/systemd/system ]; then
-      for service in prometheus grafana hyperion nabu filebrowser; do
+      for service in prometheus grafana forgejo hyperion iris nabu filebrowser; do
         if ${pkgs.systemd}/bin/systemctl --quiet is-active "podman-$service.service"; then
           ${pkgs.systemd}/bin/systemctl restart "podman-$service.service"
         fi
@@ -652,6 +849,34 @@ in
     preStart = lib.mkBefore ''
       ${pkgs.podman}/bin/podman rmi -f ${nabuImage} 2>/dev/null || true
       ${pkgs.podman}/bin/podman pull ${nabuImage}
+    '';
+  };
+
+  systemd.services.podman-iris = {
+    after = [
+      "network-online.target"
+      "podman-coredns.service"
+    ];
+    wants = [
+      "network-online.target"
+      "podman-coredns.service"
+    ];
+    preStart = lib.mkBefore ''
+      set -a
+      . /etc/nixos/secrets/red.env
+      set +a
+
+      if [ -z "''${IRIS_NTFY_TOPIC:-}" ]; then
+        echo "IRIS_NTFY_TOPIC must be set in /etc/nixos/secrets/red.env" >&2
+        exit 1
+      fi
+
+      install -d -m 0755 /run/podman-iris
+      install -m 0600 /dev/null /run/podman-iris/ntfy-forward.env
+      printf 'NTFY_FORWARD=%s\n' "$IRIS_NTFY_TOPIC" > /run/podman-iris/ntfy-forward.env
+
+      ${pkgs.podman}/bin/podman rmi -f ${irisImage} 2>/dev/null || true
+      ${pkgs.podman}/bin/podman pull ${irisImage}
     '';
   };
 
