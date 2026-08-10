@@ -1,4 +1,4 @@
-_:
+{ pkgs, ... }:
 
 {
   imports = [
@@ -17,6 +17,12 @@ _:
   boot.loader.efi.canTouchEfiVariables = true;
 
   security.sudo.wheelNeedsPassword = false;
+
+  boot.kernel.sysctl."net.netfilter.nf_conntrack_acct" = 1;
+
+  system.activationScripts.redGatewayForwarding.text = ''
+    ${pkgs.procps}/bin/sysctl -w net.ipv4.ip_forward=1
+  '';
 
   homeLanDhcp = {
     enable = true;
