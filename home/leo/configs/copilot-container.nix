@@ -114,9 +114,8 @@ let
       mkdir -p "''${HOST_COPILOT_HOME}/global-resume"
     fi
 
-    # Carry the host Git identity into the container so commits made by the
-    # agent are authored as the real user, never as "copilot-cli" or a
-    # container-default identity.
+    # Carry the host Git identity into the container so commits use the same
+    # author as the surrounding host checkout.
     HOST_GIT_NAME="$(git config --get user.name 2>/dev/null || true)"
     HOST_GIT_EMAIL="$(git config --get user.email 2>/dev/null || true)"
     GIT_IDENTITY_ARGS=()
@@ -175,8 +174,7 @@ let
       COPILOT_TOKEN="$(gh auth token)"
     fi
 
-    # Yolo mode by default: full auto-approval (tools, paths, URLs).
-    # Safe here because the CLI already runs sandboxed inside this container.
+    # Full auto-approval by default because the CLI runs inside this container.
     COPILOT_DEFAULTS=(
       --allow-all
     )
@@ -307,8 +305,8 @@ in
       and a mounted `.gitconfig`). When creating commits:
 
       - Never override `user.name` or `user.email`.
-      - Never add a `Co-authored-by:` trailer for Copilot/the CLI.
-      - Never mention Copilot, an AI assistant, or a bot as author or co-author.
+      - Do not add tool-specific co-author trailers.
+      - Do not replace the host user's commit author identity.
 
       Commits must be authored solely as the host user.
       INSTRUCTIONSEOF

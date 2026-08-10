@@ -38,15 +38,14 @@
 (setq ring-bell-function 'ignore)    ; turn the alarm totally off
 
 
-;; FIXME: wanted 99.9% of the time, but can cause your death 0.1% of
-;; the time =). TODO: save buffer before reverting
+;; Disabled until auto-revert is paired with an explicit save workflow.
 ;;(global-auto-revert-mode t)         ; auto revert modified files
 
 ;; (pc-selection-mode)                     ; selection with shift
 (auto-image-file-mode)                  ; to see picture in emacs
 ;; (dynamic-completion-mode)               ; dynamic completion
 (show-paren-mode 1)                 ; match parenthesis
-(setq-default indent-tabs-mode nil) ; nil == don't use fucking tabs to indent
+(setq-default indent-tabs-mode nil) ; nil == don't use tabs to indent
 
 ;;; HOOKS
 

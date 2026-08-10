@@ -1,7 +1,6 @@
 # Raspberry Pi kiosk
 
-The host is a Raspberry Pi 4 kiosk at `pi@10.0.0.100`. Do not access or deploy
-to any other host while working on this profile.
+The host is a Raspberry Pi 4 kiosk at `pi@10.0.0.100`.
 
 Create `/etc/nixos/secrets/pi.env` on the Pi before activating this profile:
 
