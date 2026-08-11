@@ -17,6 +17,10 @@ _:
 
   security.sudo.wheelNeedsPassword = false;
 
+  networking.wg-quick.interfaces.janus = {
+    configFile = "/etc/nixos/secrets/janus-wg.conf";
+  };
+
   houseLeoSurf.certSyncPublicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDBI8fr4dZLJ52Bj2i4LgExkFHuLIiyeUW+UitsGuA75 cert-sync";
 
   homeServer = {

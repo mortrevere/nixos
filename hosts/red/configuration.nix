@@ -20,6 +20,10 @@
 
   boot.kernel.sysctl."net.netfilter.nf_conntrack_acct" = 1;
 
+  networking.wg-quick.interfaces.janus = {
+    configFile = "/etc/nixos/secrets/janus-wg.conf";
+  };
+
   system.activationScripts.redGatewayForwarding.text = ''
     ${pkgs.procps}/bin/sysctl -w net.ipv4.ip_forward=1
   '';
@@ -57,6 +61,8 @@
         "udp dport 67 accept"
         "tcp dport 80 ip saddr $private_v4 accept"
         "tcp dport 443 ip saddr $private_v4 accept"
+        "tcp dport 80 ip saddr 100.64.88.0/24 accept"
+        "tcp dport 443 ip saddr 100.64.88.0/24 accept"
       ];
       extraForwardRules = [
         "iifname \"podman*\" accept"

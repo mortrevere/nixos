@@ -20,6 +20,7 @@ let
     heimdall = "red";
     hyperion = "red";
     iris = "red";
+    janus = "red";
     links = "red";
     mnemosyne = "black";
     nabu = "red";
