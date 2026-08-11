@@ -20,18 +20,40 @@ let
     ssl_certificate_key ${certMount}/privkey.pem;
   '';
 
-  nodeTargets = map (name: {
-    targets = [
-      "${name}.${homeLan.domain}:9100"
+  houseNodeTargets =
+    (map (name: {
+      targets = [
+        "${name}.${homeLan.domain}:9100"
+      ];
+      labels.node = name;
+    }) homeLan.nodeNames)
+    ++ [
+      {
+        targets = [
+          "10.0.0.100:9100"
+        ];
+        labels.node = "raspberrypi";
+      }
     ];
-    labels.node = name;
-  }) homeLan.nodeNames;
+
+  webNodeTargets = [
+    {
+      targets = [
+        "91.134.140.52:9100"
+      ];
+      labels.node = "vps-prod";
+    }
+  ];
 
   prometheusConfig = yaml.generate "prometheus.yml" {
     scrape_configs = [
       {
-        job_name = "node";
-        static_configs = nodeTargets;
+        job_name = "house";
+        static_configs = houseNodeTargets;
+      }
+      {
+        job_name = "web";
+        static_configs = webNodeTargets;
       }
     ];
   };
@@ -563,6 +585,10 @@ in
       done
     fi
   '';
+
+  systemd.services.podman-prometheus.restartTriggers = [
+    prometheusConfig
+  ];
 
   systemd.services.podman-grafana = {
     after = [ "podman-prometheus.service" ];

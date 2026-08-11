@@ -78,7 +78,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(up{job=\"node\"})",
+          "expr": "sum(up{job=~\"node|house|web\"})",
           "legendFormat": "up",
           "refId": "A",
           "instant": true,
@@ -144,7 +144,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(up{job=\"node\"} == bool 0)",
+          "expr": "sum(up{job=~\"node|house|web\"} == bool 0)",
           "legendFormat": "down",
           "refId": "A",
           "instant": true,
@@ -214,7 +214,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum(changes(node_boot_time_seconds{job=\"node\"}[24h]))",
+          "expr": "sum(changes(node_boot_time_seconds{job=~\"node|house|web\"}[24h]))",
           "legendFormat": "reboots",
           "refId": "A"
         }
@@ -283,7 +283,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "max(max by(node) (node_hwmon_temp_celsius{job=\"node\"}) or max by(node) (node_thermal_zone_temp{job=\"node\"}))",
+          "expr": "max(max by(node) (node_hwmon_temp_celsius{job=~\"node|house|web\"}) or max by(node) (node_thermal_zone_temp{job=~\"node|house|web\"}))",
           "legendFormat": "hottest",
           "refId": "A"
         }
@@ -355,7 +355,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "100 * (1 - avg by(node) (rate(node_cpu_seconds_total{job=\"node\",mode=\"idle\"}[2m])))",
+          "expr": "100 * (1 - avg by(node) (rate(node_cpu_seconds_total{job=~\"node|house|web\",mode=\"idle\"}[2m])))",
           "legendFormat": "{{node}}",
           "refId": "A"
         }
@@ -427,7 +427,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "100 * (1 - (node_memory_MemAvailable_bytes{job=\"node\"} / node_memory_MemTotal_bytes{job=\"node\"}))",
+          "expr": "100 * (1 - (node_memory_MemAvailable_bytes{job=~\"node|house|web\"} / node_memory_MemTotal_bytes{job=~\"node|house|web\"}))",
           "legendFormat": "{{node}}",
           "refId": "A"
         }
@@ -498,7 +498,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "max by(node) (node_filesystem_avail_bytes{job=\"node\",mountpoint=\"/\",fstype!~\"tmpfs|ramfs|overlay|squashfs|tracefs|nsfs|fuse.*\"})",
+          "expr": "max by(node) (node_filesystem_avail_bytes{job=~\"node|house|web\",mountpoint=\"/\",fstype!~\"tmpfs|ramfs|overlay|squashfs|tracefs|nsfs|fuse.*\"})",
           "legendFormat": "{{node}}",
           "refId": "A"
         }
@@ -569,7 +569,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by(node) (rate(node_network_receive_errs_total{job=\"node\",device!~\"lo|veth.*|br-.*|docker.*|podman.*\"}[2m]) + rate(node_network_transmit_errs_total{job=\"node\",device!~\"lo|veth.*|br-.*|docker.*|podman.*\"}[2m]) + rate(node_network_receive_drop_total{job=\"node\",device!~\"lo|veth.*|br-.*|docker.*|podman.*\"}[2m]) + rate(node_network_transmit_drop_total{job=\"node\",device!~\"lo|veth.*|br-.*|docker.*|podman.*\"}[2m]))",
+          "expr": "sum by(node) (rate(node_network_receive_errs_total{job=~\"node|house|web\",device!~\"lo|veth.*|br-.*|docker.*|podman.*\"}[2m]) + rate(node_network_transmit_errs_total{job=~\"node|house|web\",device!~\"lo|veth.*|br-.*|docker.*|podman.*\"}[2m]) + rate(node_network_receive_drop_total{job=~\"node|house|web\",device!~\"lo|veth.*|br-.*|docker.*|podman.*\"}[2m]) + rate(node_network_transmit_drop_total{job=~\"node|house|web\",device!~\"lo|veth.*|br-.*|docker.*|podman.*\"}[2m]))",
           "legendFormat": "{{node}}",
           "refId": "A"
         }
@@ -664,6 +664,21 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "raspberrypi"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#56a64b"
+                }
+              }
+            ]
           }
         ]
       },
@@ -694,7 +709,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "100 * (1 - avg by(node) (rate(node_cpu_seconds_total{job=\"node\",mode=\"idle\"}[2m])))",
+          "expr": "100 * (1 - avg by(node) (rate(node_cpu_seconds_total{job=~\"node|house|web\",mode=\"idle\"}[2m])))",
           "legendFormat": "{{node}}",
           "refId": "A"
         }
@@ -789,6 +804,21 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "raspberrypi"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#56a64b"
+                }
+              }
+            ]
           }
         ]
       },
@@ -819,7 +849,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "100 * (1 - (node_memory_MemAvailable_bytes{job=\"node\"} / node_memory_MemTotal_bytes{job=\"node\"}))",
+          "expr": "100 * (1 - (node_memory_MemAvailable_bytes{job=~\"node|house|web\"} / node_memory_MemTotal_bytes{job=~\"node|house|web\"}))",
           "legendFormat": "{{node}}",
           "refId": "A"
         }
@@ -905,6 +935,21 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": "^(read|write) raspberrypi$"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#56a64b"
+                }
+              }
+            ]
           }
         ]
       },
@@ -935,7 +980,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "-sum by(node) (rate(node_disk_read_bytes_total{job=\"node\",device!~\"loop.*|ram.*|fd.*\"}[2m]))",
+          "expr": "-sum by(node) (rate(node_disk_read_bytes_total{job=~\"node|house|web\",device!~\"loop.*|ram.*|fd.*\"}[2m]))",
           "legendFormat": "read {{node}}",
           "refId": "A"
         },
@@ -944,7 +989,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by(node) (rate(node_disk_written_bytes_total{job=\"node\",device!~\"loop.*|ram.*|fd.*\"}[2m]))",
+          "expr": "sum by(node) (rate(node_disk_written_bytes_total{job=~\"node|house|web\",device!~\"loop.*|ram.*|fd.*\"}[2m]))",
           "legendFormat": "write {{node}}",
           "refId": "B"
         }
@@ -1039,6 +1084,21 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "raspberrypi"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "#56a64b"
+                }
+              }
+            ]
           }
         ]
       },
@@ -1069,7 +1129,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "max by(node) (node_hwmon_temp_celsius{job=\"node\"}) or max by(node) (node_thermal_zone_temp{job=\"node\"})",
+          "expr": "max by(node) (node_hwmon_temp_celsius{job=~\"node|house|web\"}) or max by(node) (node_thermal_zone_temp{job=~\"node|house|web\"})",
           "legendFormat": "{{node}}",
           "refId": "A"
         }
@@ -1186,7 +1246,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "time() - node_boot_time_seconds{job=\"node\"}",
+          "expr": "time() - node_boot_time_seconds{job=~\"node|house|web\"}",
           "legendFormat": "{{node}}",
           "refId": "A"
         }
@@ -1303,7 +1363,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "abs(node_timex_offset_seconds{job=\"node\"})",
+          "expr": "abs(node_timex_offset_seconds{job=~\"node|house|web\"})",
           "legendFormat": "{{node}}",
           "refId": "A"
         }
@@ -1429,7 +1489,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "avg by (node) (node_power_supply_capacity{job=\"node\"})",
+          "expr": "avg by (node) (node_power_supply_capacity{job=~\"node|house|web\"})",
           "legendFormat": "{{node}}",
           "refId": "A"
         }
@@ -1590,7 +1650,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by(node) (rate(node_network_receive_bytes_total{job=\"node\",device!~\"lo|veth.*|br-.*|docker.*|podman.*\"}[2m]))",
+          "expr": "sum by(node) (rate(node_network_receive_bytes_total{job=~\"node|house|web\",device!~\"lo|veth.*|br-.*|docker.*|podman.*\"}[2m]))",
           "legendFormat": "rx {{node}}",
           "refId": "A"
         },
@@ -1599,7 +1659,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "-sum by(node) (rate(node_network_transmit_bytes_total{job=\"node\",device!~\"lo|veth.*|br-.*|docker.*|podman.*\"}[2m]))",
+          "expr": "-sum by(node) (rate(node_network_transmit_bytes_total{job=~\"node|house|web\",device!~\"lo|veth.*|br-.*|docker.*|podman.*\"}[2m]))",
           "legendFormat": "tx {{node}}",
           "refId": "B"
         }
@@ -1713,7 +1773,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "sum by (node) (node_processes_state{job=\"node\"})",
+          "expr": "sum by (node) (node_processes_state{job=~\"node|house|web\"})",
           "legendFormat": "{{node}}",
           "refId": "A"
         }
@@ -1832,7 +1892,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "node_filesystem_avail_bytes{job=\"node\",mountpoint=~\"/data/.+\",fstype!~\"tmpfs|ramfs|overlay|squashfs|tracefs|nsfs|fuse.*\"}",
+          "expr": "node_filesystem_avail_bytes{job=~\"node|house|web\",mountpoint=~\"/data/.+\",fstype!~\"tmpfs|ramfs|overlay|squashfs|tracefs|nsfs|fuse.*\"}",
           "legendFormat": "{{node}}",
           "range": true,
           "refId": "A"
@@ -1989,7 +2049,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "home_public_ip_info{job=\"node\"}",
+          "expr": "home_public_ip_info{job=~\"node|house|web\"}",
           "format": "table",
           "instant": true,
           "legendFormat": "{{host}}",
@@ -2105,7 +2165,7 @@
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "up{job=\"node\",node=~\"$node\"}",
+              "expr": "up{job=~\"node|house|web\",node=~\"$node\"}",
               "legendFormat": "up",
               "refId": "A"
             }
@@ -2173,7 +2233,7 @@
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "time() - node_boot_time_seconds{job=\"node\",node=~\"$node\"}",
+              "expr": "time() - node_boot_time_seconds{job=~\"node|house|web\",node=~\"$node\"}",
               "legendFormat": "uptime",
               "refId": "A"
             }
@@ -2241,7 +2301,7 @@
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "changes(node_boot_time_seconds{job=\"node\",node=~\"$node\"}[7d])",
+              "expr": "changes(node_boot_time_seconds{job=~\"node|house|web\",node=~\"$node\"}[7d])",
               "legendFormat": "reboots",
               "refId": "A"
             }
@@ -2309,7 +2369,7 @@
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "node_systemd_units{job=\"node\",node=~\"$node\",state=\"failed\"}",
+              "expr": "node_systemd_units{job=~\"node|house|web\",node=~\"$node\",state=\"failed\"}",
               "legendFormat": "failed",
               "refId": "A"
             }
@@ -2378,7 +2438,7 @@
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "max(node_hwmon_temp_celsius{job=\"node\",node=~\"$node\"}) or max(node_thermal_zone_temp{job=\"node\",node=~\"$node\"})",
+              "expr": "max(node_hwmon_temp_celsius{job=~\"node|house|web\",node=~\"$node\"}) or max(node_thermal_zone_temp{job=~\"node|house|web\",node=~\"$node\"})",
               "legendFormat": "max",
               "refId": "A"
             }
@@ -2447,7 +2507,7 @@
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "100 * avg(1 - rate(node_cpu_seconds_total{job=\"node\",node=~\"$node\",mode=\"idle\"}[2m]))",
+              "expr": "100 * avg(1 - rate(node_cpu_seconds_total{job=~\"node|house|web\",node=~\"$node\",mode=\"idle\"}[2m]))",
               "legendFormat": "busy",
               "refId": "A"
             }
@@ -2516,7 +2576,7 @@
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "100 * (1 - (node_memory_MemAvailable_bytes{job=\"node\",node=~\"$node\"} / node_memory_MemTotal_bytes{job=\"node\",node=~\"$node\"}))",
+              "expr": "100 * (1 - (node_memory_MemAvailable_bytes{job=~\"node|house|web\",node=~\"$node\"} / node_memory_MemTotal_bytes{job=~\"node|house|web\",node=~\"$node\"}))",
               "legendFormat": "used",
               "refId": "A"
             }
@@ -2585,7 +2645,7 @@
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "100 * (1 - max(node_filesystem_avail_bytes{job=\"node\",node=~\"$node\",mountpoint=\"/\",fstype!~\"tmpfs|ramfs|overlay|squashfs|tracefs|nsfs|fuse.*\"}) / max(node_filesystem_size_bytes{job=\"node\",node=~\"$node\",mountpoint=\"/\",fstype!~\"tmpfs|ramfs|overlay|squashfs|tracefs|nsfs|fuse.*\"}))",
+              "expr": "100 * (1 - max(node_filesystem_avail_bytes{job=~\"node|house|web\",node=~\"$node\",mountpoint=\"/\",fstype!~\"tmpfs|ramfs|overlay|squashfs|tracefs|nsfs|fuse.*\"}) / max(node_filesystem_size_bytes{job=~\"node|house|web\",node=~\"$node\",mountpoint=\"/\",fstype!~\"tmpfs|ramfs|overlay|squashfs|tracefs|nsfs|fuse.*\"}))",
               "legendFormat": "root",
               "refId": "A"
             }
@@ -2655,7 +2715,7 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
-              "expr": "changes(node_boot_time_seconds{job=\"node\",node=~\"$node\"}[24h])",
+              "expr": "changes(node_boot_time_seconds{job=~\"node|house|web\",node=~\"$node\"}[24h])",
               "legendFormat": "reboots",
               "range": true,
               "refId": "A"
@@ -2722,7 +2782,7 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
-              "expr": "abs(node_timex_offset_seconds{job=\"node\",node=~\"$node\"})",
+              "expr": "abs(node_timex_offset_seconds{job=~\"node|house|web\",node=~\"$node\"})",
               "legendFormat": "offset",
               "range": true,
               "refId": "A"
@@ -2785,7 +2845,7 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
-              "expr": "node_power_supply_capacity{job=\"node\",node=~\"$node\"}",
+              "expr": "node_power_supply_capacity{job=~\"node|house|web\",node=~\"$node\"}",
               "legendFormat": "{{power_supply}}",
               "range": true,
               "refId": "A"
@@ -2848,7 +2908,7 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
-              "expr": "node_processes_state{job=\"node\",node=~\"$node\"}",
+              "expr": "node_processes_state{job=~\"node|house|web\",node=~\"$node\"}",
               "legendFormat": "{{state}}",
               "range": true,
               "refId": "A"
@@ -2911,7 +2971,7 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
-              "expr": "sum by(device) (rate(node_network_receive_errs_total{job=\"node\",node=~\"$node\",device!~\"lo|veth.*|br-.*|docker.*|podman.*\"}[2m]) + rate(node_network_transmit_errs_total{job=\"node\",node=~\"$node\",device!~\"lo|veth.*|br-.*|docker.*|podman.*\"}[2m]) + rate(node_network_receive_drop_total{job=\"node\",node=~\"$node\",device!~\"lo|veth.*|br-.*|docker.*|podman.*\"}[2m]) + rate(node_network_transmit_drop_total{job=\"node\",node=~\"$node\",device!~\"lo|veth.*|br-.*|docker.*|podman.*\"}[2m]))",
+              "expr": "sum by(device) (rate(node_network_receive_errs_total{job=~\"node|house|web\",node=~\"$node\",device!~\"lo|veth.*|br-.*|docker.*|podman.*\"}[2m]) + rate(node_network_transmit_errs_total{job=~\"node|house|web\",node=~\"$node\",device!~\"lo|veth.*|br-.*|docker.*|podman.*\"}[2m]) + rate(node_network_receive_drop_total{job=~\"node|house|web\",node=~\"$node\",device!~\"lo|veth.*|br-.*|docker.*|podman.*\"}[2m]) + rate(node_network_transmit_drop_total{job=~\"node|house|web\",node=~\"$node\",device!~\"lo|veth.*|br-.*|docker.*|podman.*\"}[2m]))",
               "legendFormat": "{{device}}",
               "range": true,
               "refId": "A"
@@ -2974,7 +3034,7 @@
                 "uid": "${DS_PROMETHEUS}"
               },
               "editorMode": "code",
-              "expr": "label_replace(node_systemd_unit_state{job=\"node\",node=~\"$node\",name=~\"podman-.*\\\\.service\",state=\"active\"} == 1, \"container\", \"$1\", \"name\", \"podman-(.*)\\\\.service\")",
+              "expr": "label_replace(node_systemd_unit_state{job=~\"node|house|web\",node=~\"$node\",name=~\"podman-.*\\\\.service\",state=\"active\"} == 1, \"container\", \"$1\", \"name\", \"podman-(.*)\\\\.service\")",
               "legendFormat": "{{container}}",
               "range": true,
               "refId": "A"
@@ -3054,7 +3114,7 @@
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "node_hwmon_temp_celsius{job=\"node\",node=~\"$node\"}",
+              "expr": "node_hwmon_temp_celsius{job=~\"node|house|web\",node=~\"$node\"}",
               "legendFormat": "{{chip}} {{sensor}}",
               "refId": "A"
             },
@@ -3063,7 +3123,7 @@
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "node_thermal_zone_temp{job=\"node\",node=~\"$node\"}",
+              "expr": "node_thermal_zone_temp{job=~\"node|house|web\",node=~\"$node\"}",
               "legendFormat": "{{type}}",
               "refId": "B"
             }
@@ -3142,7 +3202,7 @@
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "100 * avg by(mode) (rate(node_cpu_seconds_total{job=\"node\",node=~\"$node\",mode!=\"idle\"}[2m]))",
+              "expr": "100 * avg by(mode) (rate(node_cpu_seconds_total{job=~\"node|house|web\",node=~\"$node\",mode!=\"idle\"}[2m]))",
               "legendFormat": "{{mode}}",
               "refId": "A"
             }
@@ -3213,7 +3273,7 @@
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "node_memory_MemTotal_bytes{job=\"node\",node=~\"$node\"} - node_memory_MemAvailable_bytes{job=\"node\",node=~\"$node\"}",
+              "expr": "node_memory_MemTotal_bytes{job=~\"node|house|web\",node=~\"$node\"} - node_memory_MemAvailable_bytes{job=~\"node|house|web\",node=~\"$node\"}",
               "legendFormat": "used",
               "refId": "A"
             },
@@ -3222,7 +3282,7 @@
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "node_memory_Cached_bytes{job=\"node\",node=~\"$node\"}",
+              "expr": "node_memory_Cached_bytes{job=~\"node|house|web\",node=~\"$node\"}",
               "legendFormat": "cache",
               "refId": "B"
             },
@@ -3231,7 +3291,7 @@
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "node_memory_Buffers_bytes{job=\"node\",node=~\"$node\"}",
+              "expr": "node_memory_Buffers_bytes{job=~\"node|house|web\",node=~\"$node\"}",
               "legendFormat": "buffers",
               "refId": "C"
             }
@@ -3301,7 +3361,7 @@
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "rate(node_network_receive_bytes_total{job=\"node\",node=~\"$node\",device!~\"lo|veth.*|br-.*|docker.*|podman.*\"}[2m])",
+              "expr": "rate(node_network_receive_bytes_total{job=~\"node|house|web\",node=~\"$node\",device!~\"lo|veth.*|br-.*|docker.*|podman.*\"}[2m])",
               "legendFormat": "rx {{device}}",
               "refId": "A"
             },
@@ -3310,7 +3370,7 @@
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "-rate(node_network_transmit_bytes_total{job=\"node\",node=~\"$node\",device!~\"lo|veth.*|br-.*|docker.*|podman.*\"}[2m])",
+              "expr": "-rate(node_network_transmit_bytes_total{job=~\"node|house|web\",node=~\"$node\",device!~\"lo|veth.*|br-.*|docker.*|podman.*\"}[2m])",
               "legendFormat": "tx {{device}}",
               "refId": "B"
             }
@@ -3380,7 +3440,7 @@
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "rate(node_disk_read_bytes_total{job=\"node\",node=~\"$node\",device!~\"loop.*|ram.*|fd.*\"}[2m])",
+              "expr": "rate(node_disk_read_bytes_total{job=~\"node|house|web\",node=~\"$node\",device!~\"loop.*|ram.*|fd.*\"}[2m])",
               "legendFormat": "read {{device}}",
               "refId": "A"
             },
@@ -3389,7 +3449,7 @@
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "-rate(node_disk_written_bytes_total{job=\"node\",node=~\"$node\",device!~\"loop.*|ram.*|fd.*\"}[2m])",
+              "expr": "-rate(node_disk_written_bytes_total{job=~\"node|house|web\",node=~\"$node\",device!~\"loop.*|ram.*|fd.*\"}[2m])",
               "legendFormat": "write {{device}}",
               "refId": "B"
             }
@@ -3468,7 +3528,7 @@
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "rate(node_disk_io_time_seconds_total{job=\"node\",node=~\"$node\",device!~\"loop.*|ram.*|fd.*\"}[2m])",
+              "expr": "rate(node_disk_io_time_seconds_total{job=~\"node|house|web\",node=~\"$node\",device!~\"loop.*|ram.*|fd.*\"}[2m])",
               "legendFormat": "{{device}}",
               "refId": "A"
             }
@@ -3539,7 +3599,7 @@
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "100 * (1 - node_filesystem_avail_bytes{job=\"node\",node=~\"$node\",fstype!~\"tmpfs|ramfs|overlay|squashfs|tracefs|nsfs|fuse.*\"} / node_filesystem_size_bytes{job=\"node\",node=~\"$node\",fstype!~\"tmpfs|ramfs|overlay|squashfs|tracefs|nsfs|fuse.*\"})",
+              "expr": "100 * (1 - node_filesystem_avail_bytes{job=~\"node|house|web\",node=~\"$node\",fstype!~\"tmpfs|ramfs|overlay|squashfs|tracefs|nsfs|fuse.*\"} / node_filesystem_size_bytes{job=~\"node|house|web\",node=~\"$node\",fstype!~\"tmpfs|ramfs|overlay|squashfs|tracefs|nsfs|fuse.*\"})",
               "format": "table",
               "instant": true,
               "legendFormat": "{{mountpoint}}",
@@ -3550,7 +3610,7 @@
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "node_filesystem_readonly{job=\"node\",node=~\"$node\",fstype!~\"tmpfs|ramfs|overlay|squashfs|tracefs|nsfs|fuse.*\"}",
+              "expr": "node_filesystem_readonly{job=~\"node|house|web\",node=~\"$node\",fstype!~\"tmpfs|ramfs|overlay|squashfs|tracefs|nsfs|fuse.*\"}",
               "format": "table",
               "instant": true,
               "legendFormat": "readonly {{mountpoint}}",
@@ -3561,7 +3621,7 @@
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "node_filesystem_device_error{job=\"node\",node=~\"$node\",fstype!~\"tmpfs|ramfs|overlay|squashfs|tracefs|nsfs|fuse.*\"}",
+              "expr": "node_filesystem_device_error{job=~\"node|house|web\",node=~\"$node\",fstype!~\"tmpfs|ramfs|overlay|squashfs|tracefs|nsfs|fuse.*\"}",
               "format": "table",
               "instant": true,
               "legendFormat": "device_error {{mountpoint}}",
@@ -3632,7 +3692,7 @@
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "node_filesystem_avail_bytes{job=\"node\",node=~\"$node\",fstype!~\"tmpfs|ramfs|overlay|squashfs|tracefs|nsfs|fuse.*\"}",
+              "expr": "node_filesystem_avail_bytes{job=~\"node|house|web\",node=~\"$node\",fstype!~\"tmpfs|ramfs|overlay|squashfs|tracefs|nsfs|fuse.*\"}",
               "format": "table",
               "instant": true,
               "legendFormat": "{{mountpoint}}",
@@ -3713,7 +3773,7 @@
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "node_load1{job=\"node\",node=~\"$node\"} / count(count(node_cpu_seconds_total{job=\"node\",node=~\"$node\"}) by(cpu))",
+              "expr": "node_load1{job=~\"node|house|web\",node=~\"$node\"} / count(count(node_cpu_seconds_total{job=~\"node|house|web\",node=~\"$node\"}) by(cpu))",
               "legendFormat": "load1/cpu",
               "refId": "A"
             },
@@ -3722,7 +3782,7 @@
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "rate(node_pressure_cpu_waiting_seconds_total{job=\"node\",node=~\"$node\"}[2m])",
+              "expr": "rate(node_pressure_cpu_waiting_seconds_total{job=~\"node|house|web\",node=~\"$node\"}[2m])",
               "legendFormat": "cpu pressure",
               "refId": "B"
             },
@@ -3731,7 +3791,7 @@
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "rate(node_pressure_memory_waiting_seconds_total{job=\"node\",node=~\"$node\"}[2m])",
+              "expr": "rate(node_pressure_memory_waiting_seconds_total{job=~\"node|house|web\",node=~\"$node\"}[2m])",
               "legendFormat": "memory pressure",
               "refId": "C"
             },
@@ -3740,7 +3800,7 @@
                 "type": "prometheus",
                 "uid": "${DS_PROMETHEUS}"
               },
-              "expr": "increase(node_vmstat_oom_kill{job=\"node\",node=~\"$node\"}[24h])",
+              "expr": "increase(node_vmstat_oom_kill{job=~\"node|house|web\",node=~\"$node\"}[24h])",
               "legendFormat": "oom 24h",
               "refId": "D"
             }
@@ -3787,7 +3847,7 @@
           "type": "prometheus",
           "uid": "${DS_PROMETHEUS}"
         },
-        "definition": "label_values(node_uname_info{job=\"node\"}, node)",
+        "definition": "label_values(node_uname_info{job=~\"node|house|web\"}, node)",
         "hide": 0,
         "includeAll": true,
         "label": "Node",
@@ -3796,7 +3856,7 @@
         "options": [],
         "query": {
           "qryType": 1,
-          "query": "label_values(node_uname_info{job=\"node\"}, node)",
+          "query": "label_values(node_uname_info{job=~\"node|house|web\"}, node)",
           "refId": "PrometheusVariableQueryEditor-VariableQuery"
         },
         "refresh": 1,
