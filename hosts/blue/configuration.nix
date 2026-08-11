@@ -6,7 +6,7 @@ _:
     ../../modules/server.nix
     ./hardware-configuration.nix
     ./containers.nix
-    ./jellyfin-transcode-cleaner.nix
+    ./jellyfin-transcode-lifecycle.nix
     ./move-completed-films.nix
   ]
   ++ (if builtins.pathExists ./private.nix then [ ./private.nix ] else [ ]);
