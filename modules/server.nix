@@ -115,11 +115,12 @@ in
 
     virtualisation.oci-containers.backend = lib.mkDefault "podman";
 
-    homeServer.irisNotify.serviceNames =
-      [ "podman-reverse-proxy" ]
-      ++ lib.optionals (config.houseLeoSurf.certSyncPublicKey != null) [
-        "house-leo-surf-cert-sync-install"
-      ];
+    homeServer.irisNotify.serviceNames = [
+      "podman-reverse-proxy"
+    ]
+    ++ lib.optionals (config.houseLeoSurf.certSyncPublicKey != null) [
+      "house-leo-surf-cert-sync-install"
+    ];
 
     virtualisation.oci-containers.containers.reverse-proxy = {
       image = "docker.io/library/nginx:1.27-alpine";
@@ -136,7 +137,8 @@ in
       "d /opt/certs 0755 root root -"
       "d ${certDir} 0755 root root -"
       "d /var/lib/reverse-proxy 0755 root root -"
-    ] ++ lib.optionals (config.houseLeoSurf.certSyncPublicKey != null) [
+    ]
+    ++ lib.optionals (config.houseLeoSurf.certSyncPublicKey != null) [
       "d ${certSyncRoot} 0755 root root -"
       "d ${certSyncIncoming} 0700 cert-sync cert-sync -"
     ];
@@ -198,25 +200,25 @@ in
         GatewayPorts no
     '';
 
-    systemd.services.house-leo-surf-cert-sync-install = lib.mkIf (
-      config.houseLeoSurf.certSyncPublicKey != null
-    ) {
-      description = "Install a certificate staged by the restricted cert-sync user";
-      serviceConfig = {
-        Type = "oneshot";
-        ExecStart = certSyncInstall;
-      };
-    };
+    systemd.services.house-leo-surf-cert-sync-install =
+      lib.mkIf (config.houseLeoSurf.certSyncPublicKey != null)
+        {
+          description = "Install a certificate staged by the restricted cert-sync user";
+          serviceConfig = {
+            Type = "oneshot";
+            ExecStart = certSyncInstall;
+          };
+        };
 
-    systemd.paths.house-leo-surf-cert-sync-install = lib.mkIf (
-      config.houseLeoSurf.certSyncPublicKey != null
-    ) {
-      wantedBy = [ "multi-user.target" ];
-      pathConfig = {
-        PathExists = "${certSyncIncoming}/complete";
-        Unit = "house-leo-surf-cert-sync-install.service";
-      };
-    };
+    systemd.paths.house-leo-surf-cert-sync-install =
+      lib.mkIf (config.houseLeoSurf.certSyncPublicKey != null)
+        {
+          wantedBy = [ "multi-user.target" ];
+          pathConfig = {
+            PathExists = "${certSyncIncoming}/complete";
+            Unit = "house-leo-surf-cert-sync-install.service";
+          };
+        };
 
     environment.systemPackages = with pkgs; [
       tmux
