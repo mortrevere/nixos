@@ -24,6 +24,14 @@ let
     proxy_buffering off;
   '';
 
+  linksCorsHeaders = ''
+    add_header Access-Control-Allow-Origin "https://links.house.leo.surf" always;
+    add_header Access-Control-Allow-Methods "GET, HEAD, OPTIONS" always;
+    add_header Access-Control-Allow-Headers "Accept, Authorization, Content-Type, Origin, Range" always;
+    add_header Access-Control-Allow-Private-Network "true" always;
+    add_header Vary "Origin" always;
+  '';
+
   reverseProxyNginxConf = pkgs.writeText "reverse-proxy-nginx.conf" ''
     events {}
 
@@ -31,6 +39,14 @@ let
       include /etc/nginx/mime.types;
       default_type application/octet-stream;
       access_log off;
+      ${linksCorsHeaders}
+
+      server {
+        listen 80 default_server;
+        server_name _;
+        ${nginxErrorPages.serverSnippet}
+        return 404;
+      }
 
       ${redirectServer "docker.house.leo.surf"}
       ${redirectServer "black-files.house.leo.surf"}
@@ -38,6 +54,15 @@ let
 
       server {
         listen 443 ssl default_server;
+        server_name _;
+        ssl_certificate ${certMount}/fullchain.pem;
+        ssl_certificate_key ${certMount}/privkey.pem;
+        ${nginxErrorPages.serverSnippet}
+        return 404;
+      }
+
+      server {
+        listen 443 ssl;
         server_name docker.house.leo.surf;
         ssl_certificate ${certMount}/fullchain.pem;
         ssl_certificate_key ${certMount}/privkey.pem;
