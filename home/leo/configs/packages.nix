@@ -57,5 +57,6 @@
     awscli2
     google-cloud-sdk
     linode-cli
+    (callPackage ../files/pkgs/cosign.nix { }) # pinned to 2.6.1
   ];
 }
