@@ -6,7 +6,7 @@ _:
     ../../modules/server.nix
     ./hardware-configuration.nix
     ./containers.nix
-    ./jellyfish-transcode-cleaner.nix
+    ./jellyfin-transcode-lifecycle.nix
     ./move-completed-films.nix
   ]
   ++ (if builtins.pathExists ./private.nix then [ ./private.nix ] else [ ]);
@@ -16,6 +16,10 @@ _:
   boot.loader.efi.canTouchEfiVariables = true;
 
   security.sudo.wheelNeedsPassword = false;
+
+  networking.wg-quick.interfaces.janus = {
+    configFile = "/etc/nixos/secrets/janus-wg.conf";
+  };
 
   houseLeoSurf.certSyncPublicKey = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDBI8fr4dZLJ52Bj2i4LgExkFHuLIiyeUW+UitsGuA75 cert-sync";
 

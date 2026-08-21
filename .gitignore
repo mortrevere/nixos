@@ -1,1 +1,14 @@
 hosts/*/private.nix
+
+# Local secrets and credentials.
+.env
+.env.*
+*.env
+*.key
+*.pem
+*.auth
+secrets/
+
+# Nix build outputs.
+result
+result-*

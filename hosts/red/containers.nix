@@ -10,6 +10,7 @@ let
   heimdallImage = "docker.house.leo.surf/heimdall:latest";
   hyperionImage = "docker.house.leo.surf/hyperion:latest";
   irisImage = "docker.house.leo.surf/iris:latest";
+  janusImage = "docker.house.leo.surf/janus:latest";
   linksImage = "docker.house.leo.surf/links:latest";
   nabuImage = "docker.house.leo.surf/nabu:latest";
   certMount = "/etc/house.leo.surf";
@@ -20,18 +21,48 @@ let
     ssl_certificate_key ${certMount}/privkey.pem;
   '';
 
-  nodeTargets = map (name: {
-    targets = [
-      "${name}.${homeLan.domain}:9100"
+  linksCorsHeaders = ''
+    add_header Access-Control-Allow-Origin "https://links.house.leo.surf" always;
+    add_header Access-Control-Allow-Methods "GET, HEAD, OPTIONS" always;
+    add_header Access-Control-Allow-Headers "Accept, Authorization, Content-Type, Origin, Range" always;
+    add_header Access-Control-Allow-Private-Network "true" always;
+    add_header Vary "Origin" always;
+  '';
+
+  houseNodeTargets =
+    (map (name: {
+      targets = [
+        "${name}.${homeLan.domain}:9100"
+      ];
+      labels.node = name;
+    }) homeLan.nodeNames)
+    ++ [
+      {
+        targets = [
+          "10.0.0.100:9100"
+        ];
+        labels.node = "raspberrypi";
+      }
     ];
-    labels.node = name;
-  }) homeLan.nodeNames;
+
+  webNodeTargets = [
+    {
+      targets = [
+        "100.64.88.1:9100"
+      ];
+      labels.node = "vps-prod";
+    }
+  ];
 
   prometheusConfig = yaml.generate "prometheus.yml" {
     scrape_configs = [
       {
-        job_name = "node";
-        static_configs = nodeTargets;
+        job_name = "house";
+        static_configs = houseNodeTargets;
+      }
+      {
+        job_name = "web";
+        static_configs = webNodeTargets;
       }
     ];
   };
@@ -112,6 +143,7 @@ let
       include /etc/nginx/mime.types;
       default_type application/octet-stream;
       access_log off;
+      ${linksCorsHeaders}
 
       map $http_upgrade $connection_upgrade {
         default upgrade;
@@ -120,6 +152,13 @@ let
 
       server {
         listen 80 default_server;
+        server_name _;
+        ${nginxErrorPages.serverSnippet}
+        return 404;
+      }
+
+      server {
+        listen 80;
         server_name
           grafana.house.leo.surf
           git.house.leo.surf
@@ -127,10 +166,20 @@ let
           links.house.leo.surf
           hyperion.house.leo.surf
           iris.house.leo.surf
+          janus.house.leo.surf
           nabu.house.leo.surf
           prometheus.house.leo.surf
           red-files.house.leo.surf;
         return 301 https://$host$request_uri;
+      }
+
+      server {
+        listen 443 ssl default_server;
+        server_name _;
+        ssl_certificate ${certMount}/fullchain.pem;
+        ssl_certificate_key ${certMount}/privkey.pem;
+        ${nginxErrorPages.serverSnippet}
+        return 404;
       }
 
       server {
@@ -272,6 +321,26 @@ let
 
       server {
         ${tlsConfig}
+        server_name janus.house.leo.surf;
+        ${nginxErrorPages.serverSnippet}
+
+        location / {
+          proxy_pass http://127.0.0.1:8094;
+          proxy_http_version 1.1;
+          proxy_set_header Host $host;
+          proxy_set_header X-Forwarded-Host $host;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header X-Forwarded-Proto $scheme;
+          proxy_set_header X-Forwarded-Port 443;
+          proxy_set_header Upgrade $http_upgrade;
+          proxy_set_header Connection $connection_upgrade;
+          proxy_read_timeout 300s;
+          proxy_buffering off;
+        }
+      }
+
+      server {
+        ${tlsConfig}
         server_name prometheus.house.leo.surf;
         ${nginxErrorPages.serverSnippet}
 
@@ -322,6 +391,7 @@ in
     "podman-forgejo"
     "podman-hyperion"
     "podman-iris"
+    "podman-janus"
     "podman-nabu"
     "podman-links"
     "podman-prometheus"
@@ -334,6 +404,7 @@ in
     "d /opt/heimdall 0755 root root -"
     "d /opt/hyperion 0755 root root -"
     "d /opt/iris 0755 root root -"
+    "d /opt/janus 0755 root root -"
     "d /opt/nabu 0755 root root -"
     "d /opt/prometheus 0755 root root -"
     "d /opt/prometheus/data 0750 65534 65534 -"
@@ -350,6 +421,7 @@ in
       "podman-heimdall.service"
       "podman-hyperion.service"
       "podman-iris.service"
+      "podman-janus.service"
       "podman-nabu.service"
       "podman-links.service"
       "podman-forgejo.service"
@@ -362,6 +434,7 @@ in
       "podman-heimdall.service"
       "podman-hyperion.service"
       "podman-iris.service"
+      "podman-janus.service"
       "podman-nabu.service"
       "podman-links.service"
       "podman-forgejo.service"
@@ -458,6 +531,8 @@ in
         HOST = "127.0.0.1";
         PORT = "8093";
         CIDR = "10.0.0.0/24";
+        VPN_CIDR = "100.64.88.0/24";
+        VPN_BANDWIDTH_COMMAND = "ssh -i /run/secrets/heimdall_vps_ed25519 -o BatchMode=yes -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/opt/heimdall/vps_known_hosts debian@91.134.140.52 sudo wg show wg0 dump";
         CONNTRACK_PATH = "/proc/net/nf_conntrack";
         DHCP_LEASES_PATH = "/run/heimdall/dnsmasq.leases";
         HOSTS_PATH = "/opt/heimdall/hosts.json";
@@ -468,6 +543,7 @@ in
       volumes = [
         "/opt/heimdall:/opt/heimdall"
         "/var/lib/dnsmasq/dnsmasq.leases:/run/heimdall/dnsmasq.leases:ro"
+        "/etc/nixos/secrets/janus_vps_ed25519:/run/secrets/heimdall_vps_ed25519:ro"
       ];
       extraOptions = [
         "--network=host"
@@ -501,6 +577,37 @@ in
       };
       volumes = [
         "/opt/iris:/opt/iris"
+      ];
+      extraOptions = [
+        "--network=host"
+      ];
+    };
+
+    janus = {
+      image = janusImage;
+      environmentFiles = [
+        "/etc/nixos/secrets/red.env"
+      ];
+      environment = {
+        HOST = "127.0.0.1";
+        PORT = "8094";
+        SQLITE_PATH = "/opt/janus/janus.sqlite3";
+        MNEMOSYNE_URL = "https://mnemosyne.house.leo.surf";
+        IRIS_URL = "http://127.0.0.1:8092";
+        VPN_CIDR = "100.64.88.0/24";
+        ENDPOINT = "91.134.140.52:33333";
+        INTERFACE = "wg0";
+        LISTEN_PORT = "33333";
+        SERVER_ADDRESS = "100.64.88.1/24";
+        REMOTE_HOST = "91.134.140.52";
+        REMOTE_USER = "debian";
+        REMOTE_CONFIG_PATH = "/etc/wireguard/wg0.conf";
+        SSH_KEY_PATH = "/run/secrets/janus_vps_ed25519";
+        SSH_KNOWN_HOSTS_PATH = "/opt/janus/known_hosts";
+      };
+      volumes = [
+        "/opt/janus:/opt/janus"
+        "/etc/nixos/secrets/janus_vps_ed25519:/run/secrets/janus_vps_ed25519:ro"
       ];
       extraOptions = [
         "--network=host"
@@ -556,13 +663,17 @@ in
 
   system.activationScripts.restartRedContainers.text = ''
     if [ "''${NIXOS_ACTION:-}" = switch ] && [ -d /run/systemd/system ]; then
-      for service in prometheus grafana forgejo heimdall hyperion iris links nabu filebrowser; do
+      for service in prometheus grafana forgejo heimdall hyperion iris janus links nabu filebrowser; do
         if ${pkgs.systemd}/bin/systemctl --quiet is-active "podman-$service.service"; then
           ${pkgs.systemd}/bin/systemctl restart "podman-$service.service"
         fi
       done
     fi
   '';
+
+  systemd.services.podman-prometheus.restartTriggers = [
+    prometheusConfig
+  ];
 
   systemd.services.podman-grafana = {
     after = [ "podman-prometheus.service" ];
@@ -676,6 +787,27 @@ in
 
       ${pkgs.podman}/bin/podman rmi -f ${irisImage} 2>/dev/null || true
       ${pkgs.podman}/bin/podman pull ${irisImage}
+    '';
+  };
+
+  systemd.services.podman-janus = {
+    after = [
+      "network-online.target"
+      "podman-coredns.service"
+      "podman-iris.service"
+    ];
+    wants = [
+      "network-online.target"
+      "podman-coredns.service"
+      "podman-iris.service"
+    ];
+    serviceConfig = {
+      Restart = "always";
+      RestartSec = "5min";
+    };
+    preStart = lib.mkBefore ''
+      ${pkgs.podman}/bin/podman rmi -f ${janusImage} 2>/dev/null || true
+      ${pkgs.podman}/bin/podman pull ${janusImage}
     '';
   };
 

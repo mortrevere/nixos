@@ -20,45 +20,45 @@ let
   ]);
 
   deployHook = pkgs.writeShellScript "house-leo-surf-certbot-deploy-hook" ''
-    set -euo pipefail
+        set -euo pipefail
 
-    live_dir=${configDir}/live/${certName}
+        live_dir=${configDir}/live/${certName}
 
-    install -d -m 0755 ${certDir}
-    install -m 0644 "$live_dir/fullchain.pem" ${certDir}/fullchain.pem
-    install -m 0600 "$live_dir/privkey.pem" ${certDir}/privkey.pem
+        install -d -m 0755 ${certDir}
+        install -m 0644 "$live_dir/fullchain.pem" ${certDir}/fullchain.pem
+        install -m 0600 "$live_dir/privkey.pem" ${certDir}/privkey.pem
 
-    install -d -m 0755 /opt/certs
-    touch ${knownHostsFile}
-    chmod 0600 ${knownHostsFile}
+        install -d -m 0755 /opt/certs
+        touch ${knownHostsFile}
+        chmod 0600 ${knownHostsFile}
 
-    sftp_common=(
-      -i ${identityFile}
-      -o IdentitiesOnly=yes
-      -o StrictHostKeyChecking=accept-new
-      -o UserKnownHostsFile=${knownHostsFile}
-    )
+        sftp_common=(
+          -i ${identityFile}
+          -o IdentitiesOnly=yes
+          -o StrictHostKeyChecking=accept-new
+          -o UserKnownHostsFile=${knownHostsFile}
+        )
 
-    for host in blue black; do
-      case "$host" in
-        blue) address=${homeLan.addresses.blue} ;;
-        black) address=${homeLan.addresses.black} ;;
-      esac
+        for host in blue black; do
+          case "$host" in
+            blue) address=${homeLan.addresses.blue} ;;
+            black) address=${homeLan.addresses.black} ;;
+          esac
 
-      remote="cert-sync@$address"
+          remote="cert-sync@$address"
 
-      ${pkgs.openssh}/bin/sftp "''${sftp_common[@]}" "$remote" <<EOF
--rm complete
-put ${certDir}/fullchain.pem fullchain.pem.next
-rename fullchain.pem.next fullchain.pem
-put ${certDir}/privkey.pem privkey.pem.next
-rename privkey.pem.next privkey.pem
-put /dev/null complete.next
-rename complete.next complete
-EOF
-    done
+          ${pkgs.openssh}/bin/sftp "''${sftp_common[@]}" "$remote" <<EOF
+    -rm complete
+    put ${certDir}/fullchain.pem fullchain.pem.next
+    rename fullchain.pem.next fullchain.pem
+    put ${certDir}/privkey.pem privkey.pem.next
+    rename privkey.pem.next privkey.pem
+    put /dev/null complete.next
+    rename complete.next complete
+    EOF
+        done
 
-    ${pkgs.systemd}/bin/systemctl try-reload-or-restart podman-reverse-proxy.service
+        ${pkgs.systemd}/bin/systemctl try-reload-or-restart podman-reverse-proxy.service
   '';
 
   certbotRun = pkgs.writeShellScript "house-leo-surf-certbot" ''

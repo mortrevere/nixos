@@ -1,4 +1,9 @@
-{ config, lib, pkgs, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 
 let
   atvImage = "docker.house.leo.surf/atv:latest";
@@ -30,7 +35,16 @@ let
     proxy_set_header Connection $connection_upgrade;
   '';
 
+  linksCorsHeaders = ''
+    add_header Access-Control-Allow-Origin "https://links.house.leo.surf" always;
+    add_header Access-Control-Allow-Methods "GET, HEAD, OPTIONS" always;
+    add_header Access-Control-Allow-Headers "Accept, Authorization, Content-Type, Origin, Range" always;
+    add_header Access-Control-Allow-Private-Network "true" always;
+    add_header Vary "Origin" always;
+  '';
+
   noCacheHeaders = ''
+    ${linksCorsHeaders}
     add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" always;
     add_header Pragma "no-cache" always;
     add_header Expires "0" always;
@@ -43,16 +57,33 @@ let
       include /etc/nginx/mime.types;
       default_type application/octet-stream;
       access_log off;
+      ${linksCorsHeaders}
 
       map $http_upgrade $connection_upgrade {
         default upgrade;
         "" close;
       }
 
+      server {
+        listen 80 default_server;
+        server_name _;
+        ${nginxErrorPages.serverSnippet}
+        return 404;
+      }
+
       ${redirectServer "transmission.house.leo.surf"}
       ${redirectServer "cinema.house.leo.surf"}
       ${redirectServer "blue-files.house.leo.surf"}
       ${redirectServer "atv.house.leo.surf"}
+
+      server {
+        listen 443 ssl default_server;
+        server_name _;
+        ssl_certificate ${certMount}/fullchain.pem;
+        ssl_certificate_key ${certMount}/privkey.pem;
+        ${nginxErrorPages.serverSnippet}
+        return 404;
+      }
 
       server {
         listen 443 ssl;

@@ -103,7 +103,6 @@ server hosts.
 
 Use fully qualified home hostnames for SSH and service operations:
 `red.house.leo.surf`, `blue.house.leo.surf`, and `black.house.leo.surf`.
-Do not use the old short `red.house`, `blue.house`, or `black.house` names.
 
 ### Rebuild System
 
@@ -244,11 +243,9 @@ carries the host's Git identity into the container: it reads `user.name`/
 `user.email` from the host's `git config` and passes them in as
 `GIT_AUTHOR_NAME`/`GIT_AUTHOR_EMAIL`/`GIT_COMMITTER_NAME`/`GIT_COMMITTER_EMAIL`,
 and bind-mounts `~/.gitconfig` read-only (via `GIT_CONFIG_GLOBAL`, outside of
-`/tmp/home` to avoid container permission issues) as a fallback. A generated
-`copilot-instructions.md` also instructs the agent to never override that
-identity and never add a `Co-authored-by` trailer, so commits made from inside
-the container are always authored as the host user, not as "copilot-cli" or a
-bot/co-author.
+`/tmp/home` to avoid container permission issues) as a fallback. The wrapper
+also writes commit-authoring instructions for the CLI so commits made from
+inside the container use the host identity.
 
 ## System Information
 
