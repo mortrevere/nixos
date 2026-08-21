@@ -49,7 +49,7 @@ let
     FROM ubuntu:24.04
 
     ENV DEBIAN_FRONTEND=noninteractive
-    ENV PATH="/root/.local/bin:/usr/local/bin:/usr/bin:/bin"
+    ENV PATH="/usr/local/bin:/usr/bin:/bin"
 
     RUN apt-get update \
         && apt-get install -y --no-install-recommends \
@@ -57,9 +57,20 @@ let
             ca-certificates \
             curl \
             git \
-            gh \
             python3 \
             python3-pip \
+        && rm -rf /var/lib/apt/lists/*
+
+    # Install gh from GitHub's official apt repo so the CLI stays up to date
+    # (Ubuntu's bundled package can lag well behind upstream).
+    RUN mkdir -p -m 755 /etc/apt/keyrings \
+        && curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+            -o /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+        && chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg \
+        && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
+            > /etc/apt/sources.list.d/github-cli.list \
+        && apt-get update \
+        && apt-get install -y --no-install-recommends gh \
         && rm -rf /var/lib/apt/lists/*
 
     RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
@@ -161,17 +172,28 @@ let
       exit 0
     fi
 
-    "''${ENGINE}" build \
-      -t "''${IMAGE_NAME}" \
-      -f "''${DOCKERFILE_PATH}" \
-      "$(dirname "''${DOCKERFILE_PATH}")" >/dev/null
+    # Build the image only when it's missing. Use `copilot update` to force a
+    # rebuild once the image exists.
+    if ! "''${ENGINE}" image inspect "''${IMAGE_NAME}" >/dev/null 2>&1; then
+      echo "Building ''${IMAGE_NAME} (first run) ..." >&2
+      "''${ENGINE}" build \
+        -t "''${IMAGE_NAME}" \
+        -f "''${DOCKERFILE_PATH}" \
+        "$(dirname "''${DOCKERFILE_PATH}")" >/dev/null
+    fi
 
     if [ -n "''${COPILOT_GITHUB_TOKEN:-}" ]; then
       COPILOT_TOKEN="''${COPILOT_GITHUB_TOKEN}"
     elif [ -n "''${GH_TOKEN:-}" ]; then
       COPILOT_TOKEN="''${GH_TOKEN}"
-    else
-      COPILOT_TOKEN="$(gh auth token)"
+    elif ! command -v gh >/dev/null 2>&1; then
+      echo "error: no GitHub token available" >&2
+      echo "       set COPILOT_GITHUB_TOKEN or GH_TOKEN, or install the gh CLI and run 'gh auth login'" >&2
+      exit 1
+    elif ! COPILOT_TOKEN="$(gh auth token 2>/dev/null)" || [ -z "''${COPILOT_TOKEN}" ]; then
+      echo "error: could not obtain a GitHub token from gh" >&2
+      echo "       run 'gh auth login', or set COPILOT_GITHUB_TOKEN or GH_TOKEN" >&2
+      exit 1
     fi
 
     # Full auto-approval by default because the CLI runs inside this container.
@@ -200,8 +222,8 @@ let
       -e COPILOT_GITHUB_TOKEN="''${COPILOT_TOKEN}"
       -e GH_TOKEN="''${COPILOT_TOKEN}"
       --network=host
-      "''${GIT_IDENTITY_ARGS[@]}"
-      "''${GITCONFIG_MOUNT_ARGS[@]}"
+      ''${GIT_IDENTITY_ARGS[@]+"''${GIT_IDENTITY_ARGS[@]}"}
+      ''${GITCONFIG_MOUNT_ARGS[@]+"''${GITCONFIG_MOUNT_ARGS[@]}"}
     )
 
     if printf '%s' "''${ENGINE_INFO}" | grep -qi podman; then
