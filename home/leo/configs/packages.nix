@@ -54,8 +54,13 @@
     # cloud
     incus
     scaleway-cli
+    redis
     awscli2
     google-cloud-sdk
-    linode-cli
+    (linode-cli.overrideAttrs (old: {
+      # the `obj` (Object Storage) plugin requires boto3 at runtime
+      propagatedBuildInputs = (old.propagatedBuildInputs or [ ]) ++ [ python3Packages.boto3 ];
+    }))
+    (callPackage ../files/pkgs/cosign.nix { }) # pinned to 2.6.1
   ];
 }
