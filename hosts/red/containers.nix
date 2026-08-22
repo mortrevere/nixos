@@ -3,6 +3,7 @@
 let
   homeLan = import ../../modules/home-lan.nix;
   nginxErrorPages = import ../../modules/nginx-error-pages.nix;
+  linksCorsProbes = import ../../modules/links-cors-probes.nix;
 
   yaml = pkgs.formats.yaml { };
 
@@ -21,12 +22,35 @@ let
     ssl_certificate_key ${certMount}/privkey.pem;
   '';
 
-  linksCorsHeaders = ''
-    add_header Access-Control-Allow-Origin "https://links.house.leo.surf" always;
-    add_header Access-Control-Allow-Methods "GET, HEAD, OPTIONS" always;
-    add_header Access-Control-Allow-Headers "Accept, Authorization, Content-Type, Origin, Range" always;
-    add_header Access-Control-Allow-Private-Network "true" always;
-    add_header Vary "Origin" always;
+  janusAuthRequestLocation = ''
+    location = /_janus_validate {
+      internal;
+      proxy_pass https://janus.house.leo.surf/auth/validate?app_name=$host&identity=$remote_addr;
+      proxy_pass_request_body off;
+      proxy_set_header Content-Length "";
+      proxy_set_header Host janus.house.leo.surf;
+      proxy_ssl_server_name on;
+    }
+  '';
+
+  vpnProtectedLocation = proxyConfig: ''
+    location / {
+      error_page 418 = @janus_auth;
+      if ($janus_vpn_client) {
+        return 418;
+      }
+      ${proxyConfig}
+    }
+
+    location @janus_auth {
+      internal;
+      recursive_error_pages on;
+      error_page 403 = @house_error_403;
+      auth_request /_janus_validate;
+      ${proxyConfig}
+    }
+
+    ${janusAuthRequestLocation}
   '';
 
   houseNodeTargets =
@@ -142,12 +166,20 @@ let
     http {
       include /etc/nginx/mime.types;
       default_type application/octet-stream;
-      access_log off;
-      ${linksCorsHeaders}
+      access_log /dev/stdout combined;
+      resolver 127.0.0.1 ipv6=off valid=30s;
+      ${linksCorsProbes.headers}
+      ${linksCorsProbes.methodMap}
+      ${linksCorsProbes.hideUpstreamHeaders}
 
       map $http_upgrade $connection_upgrade {
         default upgrade;
         "" close;
+      }
+
+      geo $janus_vpn_client {
+        default 0;
+        ${homeLan.vpnClientCidr} 1;
       }
 
       server {
@@ -187,8 +219,9 @@ let
         server_name grafana.house.leo.surf;
         ${nginxErrorPages.serverSnippet}
 
-        location / {
+        ${vpnProtectedLocation ''
           proxy_pass http://127.0.0.1:3001;
+          ${linksCorsProbes.proxyMethod}
           proxy_http_version 1.1;
           proxy_set_header Host $host;
           proxy_set_header X-Forwarded-Host $host;
@@ -199,7 +232,7 @@ let
           proxy_set_header Connection $connection_upgrade;
           proxy_read_timeout 300s;
           proxy_buffering off;
-        }
+        ''}
       }
 
       server {
@@ -208,8 +241,9 @@ let
         ${nginxErrorPages.serverSnippet}
         client_max_body_size 50m;
 
-        location / {
+        ${vpnProtectedLocation ''
           proxy_pass http://127.0.0.1:3002;
+          ${linksCorsProbes.proxyMethod}
           proxy_http_version 1.1;
           proxy_set_header Host $host;
           proxy_set_header X-Forwarded-Host $host;
@@ -220,7 +254,7 @@ let
           proxy_set_header Connection $connection_upgrade;
           proxy_read_timeout 300s;
           proxy_buffering off;
-        }
+        ''}
       }
 
       server {
@@ -228,8 +262,9 @@ let
         server_name links.house.leo.surf;
         ${nginxErrorPages.serverSnippet}
 
-        location / {
+        ${vpnProtectedLocation ''
           proxy_pass http://127.0.0.1:8088;
+          ${linksCorsProbes.proxyMethod}
           proxy_http_version 1.1;
           proxy_set_header Host $host;
           proxy_set_header X-Forwarded-Host $host;
@@ -240,7 +275,7 @@ let
           proxy_set_header Connection $connection_upgrade;
           proxy_read_timeout 300s;
           proxy_buffering off;
-        }
+        ''}
       }
 
       server {
@@ -248,8 +283,9 @@ let
         server_name hyperion.house.leo.surf;
         ${nginxErrorPages.serverSnippet}
 
-        location / {
+        ${vpnProtectedLocation ''
           proxy_pass http://127.0.0.1:8090;
+          ${linksCorsProbes.proxyMethod}
           proxy_http_version 1.1;
           proxy_set_header Host $host;
           proxy_set_header X-Forwarded-Host $host;
@@ -260,7 +296,7 @@ let
           proxy_set_header Connection $connection_upgrade;
           proxy_read_timeout 300s;
           proxy_buffering off;
-        }
+        ''}
       }
 
       server {
@@ -268,15 +304,16 @@ let
         server_name heimdall.house.leo.surf;
         ${nginxErrorPages.serverSnippet}
 
-        location / {
+        ${vpnProtectedLocation ''
           proxy_pass http://127.0.0.1:8093;
+          ${linksCorsProbes.proxyMethod}
           proxy_http_version 1.1;
           proxy_set_header Host $host;
           proxy_set_header X-Forwarded-Host $host;
           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
           proxy_set_header X-Forwarded-Proto $scheme;
           proxy_set_header X-Forwarded-Port 443;
-        }
+        ''}
       }
 
       server {
@@ -284,8 +321,9 @@ let
         server_name nabu.house.leo.surf;
         ${nginxErrorPages.serverSnippet}
 
-        location / {
+        ${vpnProtectedLocation ''
           proxy_pass http://127.0.0.1:8091;
+          ${linksCorsProbes.proxyMethod}
           proxy_http_version 1.1;
           proxy_set_header Host $host;
           proxy_set_header X-Forwarded-Host $host;
@@ -296,7 +334,7 @@ let
           proxy_set_header Connection $connection_upgrade;
           proxy_read_timeout 300s;
           proxy_buffering off;
-        }
+        ''}
       }
 
       server {
@@ -304,8 +342,9 @@ let
         server_name iris.house.leo.surf;
         ${nginxErrorPages.serverSnippet}
 
-        location / {
+        ${vpnProtectedLocation ''
           proxy_pass http://127.0.0.1:8092;
+          ${linksCorsProbes.proxyMethod}
           proxy_http_version 1.1;
           proxy_set_header Host $host;
           proxy_set_header X-Forwarded-Host $host;
@@ -316,7 +355,7 @@ let
           proxy_set_header Connection $connection_upgrade;
           proxy_read_timeout 300s;
           proxy_buffering off;
-        }
+        ''}
       }
 
       server {
@@ -326,6 +365,7 @@ let
 
         location / {
           proxy_pass http://127.0.0.1:8094;
+          ${linksCorsProbes.proxyMethod}
           proxy_http_version 1.1;
           proxy_set_header Host $host;
           proxy_set_header X-Forwarded-Host $host;
@@ -344,8 +384,9 @@ let
         server_name prometheus.house.leo.surf;
         ${nginxErrorPages.serverSnippet}
 
-        location / {
+        ${vpnProtectedLocation ''
           proxy_pass http://127.0.0.1:9090;
+          ${linksCorsProbes.proxyMethod}
           proxy_http_version 1.1;
           proxy_set_header Host $host;
           proxy_set_header X-Forwarded-Host $host;
@@ -356,7 +397,7 @@ let
           proxy_set_header Connection $connection_upgrade;
           proxy_read_timeout 300s;
           proxy_buffering off;
-        }
+        ''}
       }
 
       server {
@@ -365,8 +406,9 @@ let
         ${nginxErrorPages.serverSnippet}
         client_max_body_size 0;
 
-        location / {
+        ${vpnProtectedLocation ''
           proxy_pass http://127.0.0.1:8089;
+          ${linksCorsProbes.proxyMethod}
           proxy_http_version 1.1;
           proxy_set_header Host $host;
           proxy_set_header X-Forwarded-Host $host;
@@ -375,7 +417,7 @@ let
           proxy_set_header X-Forwarded-Port 443;
           proxy_read_timeout 300s;
           proxy_buffering off;
-        }
+        ''}
       }
     }
   '';
