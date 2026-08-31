@@ -40,9 +40,19 @@
     profiles = {
       be326-udp = ./nordvpn/be326.nordvpn.com.udp_2.6.ovpn;
       be315-udp = ./nordvpn/be315.nordvpn.com.udp_2.6.ovpn;
+      be205-udp = ./nordvpn/be205.nordvpn.com.udp_2.6.ovpn;
+      be301-udp = ./nordvpn/be301.nordvpn.com.udp_2.6.ovpn;
+      be317-udp = ./nordvpn/be317.nordvpn.com.udp_2.6.ovpn;
+      be321-udp = ./nordvpn/be321.nordvpn.com.udp_2.6.ovpn;
     };
     activeProfile = "be326-udp";
-    fallbackProfiles = [ "be315-udp" ];
+    fallbackProfiles = [
+      "be315-udp"
+      "be205-udp"
+      "be301-udp"
+      "be317-udp"
+      "be321-udp"
+    ];
   };
 
   homeServer = {

@@ -36,6 +36,8 @@ in
 
   domain = "house.leo.surf";
 
+  vpnClientCidr = "100.64.88.0/24";
+
   publicResolvers = [
     "1.1.1.2"
     "1.0.0.2"

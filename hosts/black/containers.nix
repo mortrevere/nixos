@@ -1,8 +1,10 @@
 { lib, pkgs, ... }:
 
 let
+  homeLan = import ../../modules/home-lan.nix;
   certMount = "/etc/house.leo.surf";
   nginxErrorPages = import ../../modules/nginx-error-pages.nix;
+  linksCorsProbes = import ../../modules/links-cors-probes.nix;
   mnemosyneImage = "docker.house.leo.surf/mnemosyne:latest";
 
   redirectServer = serverName: ''
@@ -24,12 +26,35 @@ let
     proxy_buffering off;
   '';
 
-  linksCorsHeaders = ''
-    add_header Access-Control-Allow-Origin "https://links.house.leo.surf" always;
-    add_header Access-Control-Allow-Methods "GET, HEAD, OPTIONS" always;
-    add_header Access-Control-Allow-Headers "Accept, Authorization, Content-Type, Origin, Range" always;
-    add_header Access-Control-Allow-Private-Network "true" always;
-    add_header Vary "Origin" always;
+  janusAuthRequestLocation = ''
+    location = /_janus_validate {
+      internal;
+      proxy_pass https://janus.house.leo.surf/auth/validate?app_name=$host&identity=$remote_addr;
+      proxy_pass_request_body off;
+      proxy_set_header Content-Length "";
+      proxy_set_header Host janus.house.leo.surf;
+      proxy_ssl_server_name on;
+    }
+  '';
+
+  vpnProtectedLocation = proxyConfig: ''
+    location / {
+      error_page 418 = @janus_auth;
+      if ($janus_vpn_client) {
+        return 418;
+      }
+      ${proxyConfig}
+    }
+
+    location @janus_auth {
+      internal;
+      recursive_error_pages on;
+      error_page 403 = @house_error_403;
+      auth_request /_janus_validate;
+      ${proxyConfig}
+    }
+
+    ${janusAuthRequestLocation}
   '';
 
   reverseProxyNginxConf = pkgs.writeText "reverse-proxy-nginx.conf" ''
@@ -39,7 +64,15 @@ let
       include /etc/nginx/mime.types;
       default_type application/octet-stream;
       access_log off;
-      ${linksCorsHeaders}
+      resolver 127.0.0.1 ipv6=off valid=30s;
+      ${linksCorsProbes.headers}
+      ${linksCorsProbes.methodMap}
+      ${linksCorsProbes.hideUpstreamHeaders}
+
+      geo $janus_vpn_client {
+        default 0;
+        ${homeLan.vpnClientCidr} 1;
+      }
 
       server {
         listen 80 default_server;
@@ -69,10 +102,11 @@ let
         ${nginxErrorPages.serverSnippet}
         client_max_body_size 0;
 
-        location / {
+        ${vpnProtectedLocation ''
           proxy_pass http://127.0.0.1:5000;
+          ${linksCorsProbes.proxyMethod}
           ${proxyHeaders}
-        }
+        ''}
       }
 
       server {
@@ -83,10 +117,11 @@ let
         ${nginxErrorPages.serverSnippet}
         client_max_body_size 0;
 
-        location / {
+        ${vpnProtectedLocation ''
           proxy_pass http://127.0.0.1:8089;
+          ${linksCorsProbes.proxyMethod}
           ${proxyHeaders}
-        }
+        ''}
       }
 
       server {
@@ -96,10 +131,11 @@ let
         ssl_certificate_key ${certMount}/privkey.pem;
         ${nginxErrorPages.serverSnippet}
 
-        location / {
+        ${vpnProtectedLocation ''
           proxy_pass http://127.0.0.1:8090;
+          ${linksCorsProbes.proxyMethod}
           ${proxyHeaders}
-        }
+        ''}
       }
     }
   '';

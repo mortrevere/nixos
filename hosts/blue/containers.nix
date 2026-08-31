@@ -6,10 +6,12 @@
 }:
 
 let
+  homeLan = import ../../modules/home-lan.nix;
   atvImage = "docker.house.leo.surf/atv:latest";
   jellyfinTranscodeTmpfsSize = "4G";
   certMount = "/etc/house.leo.surf";
   nginxErrorPages = import ../../modules/nginx-error-pages.nix;
+  linksCorsProbes = import ../../modules/links-cors-probes.nix;
 
   redirectServer = serverName: ''
     server {
@@ -35,19 +37,42 @@ let
     proxy_set_header Connection $connection_upgrade;
   '';
 
-  linksCorsHeaders = ''
-    add_header Access-Control-Allow-Origin "https://links.house.leo.surf" always;
-    add_header Access-Control-Allow-Methods "GET, HEAD, OPTIONS" always;
-    add_header Access-Control-Allow-Headers "Accept, Authorization, Content-Type, Origin, Range" always;
-    add_header Access-Control-Allow-Private-Network "true" always;
-    add_header Vary "Origin" always;
-  '';
-
   noCacheHeaders = ''
-    ${linksCorsHeaders}
+    ${linksCorsProbes.headers}
     add_header Cache-Control "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0" always;
     add_header Pragma "no-cache" always;
     add_header Expires "0" always;
+  '';
+
+  janusAuthRequestLocation = ''
+    location = /_janus_validate {
+      internal;
+      proxy_pass https://janus.house.leo.surf/auth/validate?app_name=$host&identity=$remote_addr;
+      proxy_pass_request_body off;
+      proxy_set_header Content-Length "";
+      proxy_set_header Host janus.house.leo.surf;
+      proxy_ssl_server_name on;
+    }
+  '';
+
+  vpnProtectedLocation = proxyConfig: ''
+    location / {
+      error_page 418 = @janus_auth;
+      if ($janus_vpn_client) {
+        return 418;
+      }
+      ${proxyConfig}
+    }
+
+    location @janus_auth {
+      internal;
+      recursive_error_pages on;
+      error_page 403 = @house_error_403;
+      auth_request /_janus_validate;
+      ${proxyConfig}
+    }
+
+    ${janusAuthRequestLocation}
   '';
 
   reverseProxyNginxConf = pkgs.writeText "reverse-proxy-nginx.conf" ''
@@ -57,11 +82,19 @@ let
       include /etc/nginx/mime.types;
       default_type application/octet-stream;
       access_log off;
-      ${linksCorsHeaders}
+      resolver 127.0.0.1 ipv6=off valid=30s;
+      ${linksCorsProbes.headers}
+      ${linksCorsProbes.methodMap}
+      ${linksCorsProbes.hideUpstreamHeaders}
 
       map $http_upgrade $connection_upgrade {
         default upgrade;
         "" close;
+      }
+
+      geo $janus_vpn_client {
+        default 0;
+        ${homeLan.vpnClientCidr} 1;
       }
 
       server {
@@ -92,11 +125,12 @@ let
         ssl_certificate_key ${certMount}/privkey.pem;
         ${nginxErrorPages.serverSnippet}
 
-        location / {
+        ${vpnProtectedLocation ''
           proxy_pass http://127.0.0.1:9091;
+          ${linksCorsProbes.proxyMethod}
           ${proxyHeaders}
           ${upgradeHeaders}
-        }
+        ''}
       }
 
       server {
@@ -106,12 +140,13 @@ let
         ssl_certificate_key ${certMount}/privkey.pem;
         ${nginxErrorPages.serverSnippet}
 
-        location / {
+        ${vpnProtectedLocation ''
           proxy_pass http://127.0.0.1:8096;
+          ${linksCorsProbes.proxyMethod}
           ${proxyHeaders}
           proxy_set_header X-Real-IP $remote_addr;
           ${upgradeHeaders}
-        }
+        ''}
       }
 
       server {
@@ -122,10 +157,11 @@ let
         ${nginxErrorPages.serverSnippet}
         client_max_body_size 0;
 
-        location / {
+        ${vpnProtectedLocation ''
           proxy_pass http://127.0.0.1:8089;
+          ${linksCorsProbes.proxyMethod}
           ${proxyHeaders}
-        }
+        ''}
       }
 
       server {
@@ -135,12 +171,13 @@ let
         ssl_certificate_key ${certMount}/privkey.pem;
         ${nginxErrorPages.serverSnippet}
 
-        location / {
+        ${vpnProtectedLocation ''
           proxy_pass http://127.0.0.1:8090;
+          ${linksCorsProbes.proxyMethod}
           ${proxyHeaders}
           ${upgradeHeaders}
           ${noCacheHeaders}
-        }
+        ''}
       }
     }
   '';

@@ -101,8 +101,10 @@ rec {
   '';
 
   serverSnippet = ''
+    error_page 403 = @house_error_403;
     error_page 404 = @house_error_404;
     error_page 502 = @house_error_502;
+    ${errorPage "403" "Forbidden" "Access to $host is forbidden."}
     ${errorPage "404" "Not Found" "$host did not find that page."}
     ${errorPage "502" "Bad Gateway" "$host could not reach the upstream service."}
   '';
