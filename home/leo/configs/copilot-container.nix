@@ -54,9 +54,16 @@ let
     RUN apt-get update \
         && apt-get install -y --no-install-recommends \
             bash \
+            build-essential \
             ca-certificates \
             curl \
+            g++ \
+            gcc \
+            gdb \
             git \
+            gh \
+            make \
+            openssh-client \
             python3 \
             python3-pip \
         && rm -rf /var/lib/apt/lists/*
@@ -76,6 +83,8 @@ let
     RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh
 
     RUN /usr/local/bin/uv tool install ruff
+
+    RUN curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
     RUN curl -fsSL https://gh.io/copilot-install | bash
 
@@ -111,14 +120,33 @@ let
     CALLER_PWD="$(pwd)"
     HOST_COPILOT_HOME="''${HOST_COPILOT_HOME:-${config.xdg.dataHome}/copilot-cli}"
     USE_GLOBAL_RESUME=false
+    ENABLE_PONY=false
 
+    # Filter out our own flags (e.g. --pony) so they are never forwarded to
+    # the copilot binary, while still detecting resume for the global mount.
+    PONY_FILTERED_ARGS=()
     for arg in "$@"; do
       case "''${arg}" in
+        --pony)
+          ENABLE_PONY=true
+          continue
+          ;;
         --resume|--resume=*|-r|-r=*)
           USE_GLOBAL_RESUME=true
           ;;
       esac
+      PONY_FILTERED_ARGS+=("''${arg}")
     done
+    set -- ''${PONY_FILTERED_ARGS[@]+"''${PONY_FILTERED_ARGS[@]}"}
+
+    # --pony uses a fully separate persistent state dir so the ponytail plugin
+    # is confined to pony sessions and never bleeds into instances started
+    # without the flag (split-brain by design). It is seeded with the same
+    # settings/hooks/instructions as the main dir by the home-manager
+    # activation hook below.
+    if [ "''${ENABLE_PONY}" = true ]; then
+      HOST_COPILOT_HOME="''${HOST_COPILOT_HOME}-pony"
+    fi
 
     mkdir -p "''${HOST_COPILOT_HOME}"
     if [ "''${USE_GLOBAL_RESUME}" = true ]; then
@@ -211,6 +239,15 @@ let
       set -- copilot "''${COPILOT_DEFAULTS[@]}" "$@"
     fi
 
+    # --pony: install and enable the ponytail plugin
+    # (https://github.com/dietrichgebert/ponytail) for this instance. The
+    # plugin is registered in the pony-only COPILOT_HOME selected above, so it
+    # persists there (idempotent install) without ever affecting non-pony runs.
+    if [ "''${ENABLE_PONY}" = true ]; then
+      PONY_SETUP='copilot plugin marketplace add DietrichGebert/ponytail >/dev/null 2>&1 || true; copilot plugin install ponytail@ponytail >/dev/null 2>&1 || true; '
+      set -- bash -c "''${PONY_SETUP}"'exec "$@"' pony "$@"
+    fi
+
     ENGINE_INFO="$("''${ENGINE}" info 2>/dev/null || true)"
 
     RUN_ARGS=(
@@ -292,6 +329,10 @@ in
 
     home.sessionPath = [ "${config.home.homeDirectory}/.local/bin" ];
 
+    # Host-side alias to jump straight into the copilot persistent state dir
+    # (this is the host path bind-mounted as /copilot-state inside the container).
+    programs.bash.shellAliases.cdcopilot = "cd ${config.xdg.dataHome}/copilot-cli";
+
     xdg.configFile."copilot-container/Dockerfile".text = dockerfileText;
 
     home.file.".local/bin/copilot" = {
@@ -300,26 +341,30 @@ in
     };
 
     home.activation.copilotContainerDirs = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
-            mkdir -p "${config.xdg.dataHome}/copilot-cli"
-            mkdir -p "${config.xdg.dataHome}/copilot-cli/global-resume"
-            mkdir -p "${config.xdg.dataHome}/copilot-cli/hooks"
             mkdir -p "${config.home.homeDirectory}/.local/bin"
             mkdir -p "${config.xdg.configHome}/copilot-container"
 
-            # Auto-trust /workspace so copilot doesn't prompt on startup
-            if [ ! -f "${config.xdg.dataHome}/copilot-cli/settings.json" ]; then
-              echo '{"trustedFolders":["/workspace"]}' > "${config.xdg.dataHome}/copilot-cli/settings.json"
-            fi
+            # Seed the default and the --pony state dirs identically so pony
+            # sessions get the same trust, notification hooks and instructions.
+            # They stay otherwise separate (split-brain), which is what keeps
+            # the ponytail plugin out of non-pony instances.
+            for _cpdir in "${config.xdg.dataHome}/copilot-cli" "${config.xdg.dataHome}/copilot-cli-pony"; do
+              mkdir -p "$_cpdir" "$_cpdir/global-resume" "$_cpdir/hooks"
 
-            # ntfy.sh notification hooks: always regenerated from Nix config
-            cat > "${config.xdg.dataHome}/copilot-cli/hooks/notify.json" << 'HOOKSEOF'
+              # Auto-trust /workspace so copilot doesn't prompt on startup
+              if [ ! -f "$_cpdir/settings.json" ]; then
+                echo '{"trustedFolders":["/workspace"]}' > "$_cpdir/settings.json"
+              fi
+
+              # ntfy.sh notification hooks: always regenerated from Nix config
+              cat > "$_cpdir/hooks/notify.json" << 'HOOKSEOF'
       ${notifyHooksJson}
       HOOKSEOF
 
-            # Global instructions: always regenerated from Nix config.
-            # The container carries the host Git identity (see the `copilot`
-            # wrapper script), so commits must use that identity as-is.
-            cat > "${config.xdg.dataHome}/copilot-cli/copilot-instructions.md" << 'INSTRUCTIONSEOF'
+              # Global instructions: always regenerated from Nix config.
+              # The container carries the host Git identity (see the `copilot`
+              # wrapper script), so commits must use that identity as-is.
+              cat > "$_cpdir/copilot-instructions.md" << 'INSTRUCTIONSEOF'
       # Git commit authorship
 
       This session runs inside a container that is pre-configured with the
@@ -332,6 +377,7 @@ in
 
       Commits must be authored solely as the host user.
       INSTRUCTIONSEOF
+            done
     '';
   };
 }
