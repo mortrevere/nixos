@@ -229,6 +229,11 @@ let
       --allow-all
     )
 
+    # COPILOT_MODEL, if set on the host, selects the model used on startup.
+    if [ -n "''${COPILOT_MODEL:-}" ]; then
+      COPILOT_DEFAULTS+=(--model "''${COPILOT_MODEL}")
+    fi
+
     if [[ "''${1:-}" == "bash" ]]; then
       : # drop into container shell as-is
     elif [ "$#" -eq 0 ]; then
