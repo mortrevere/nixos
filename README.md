@@ -31,7 +31,7 @@ server hosts.
 - **home/leo/server.nix** - Server Home Manager profile.
 - **home/leo/configs/** - Reusable Home Manager config modules (Hyprland, Waybar,
   Rofi, Mako, Kitty, shell aliases/functions, Emacs, Kubernetes tooling, Firefox,
-  scripts, per-host bash prompts, containerized Copilot CLI wrapper, paste-horizon).
+  scripts, per-host bash prompts, Copilot CLI plumbing, paste-horizon).
 - **home/leo/files/** - Managed non-Nix files sourced by Home Manager modules
   (Emacs init, standalone Python scripts, etc.).
 - **private/** - Private submodule used only by the laptop profile for local-only
@@ -85,8 +85,10 @@ server hosts.
   `kubectl-cnpg`, `stern`, `pinniped`, `kubernetes-helm`, `argocd`
 - k3s, toggled at runtime with the `k3s-on` / `k3s-off` aliases
 - `ripgrep`, `dyff`, `python3`
-- GitHub Copilot CLI, exposed through the `copilot` wrapper in
-  `home/leo/configs/copilot-container.nix`
+- GitHub Copilot CLI, exposed through the `copilot` command wired up by
+  `home/leo/configs/copilot-container.nix`, which pulls the standalone
+  [`mortrevere/copilot-container`](https://github.com/mortrevere/copilot-container)
+  stack on rebuild
 - Kubectl context/namespace shown in the shell prompt on the laptop
   (`home/leo/configs/prompt-laptop.nix`); a simpler prompt on servers
   (`prompt-server.nix`)
@@ -238,14 +240,12 @@ This flake does not set a Git identity. Configure `programs.git` in your own
 Home Manager module if you want the repo to manage `user.name` and
 `user.email`.
 
-The containerized Copilot CLI wrapper (`home/leo/configs/copilot-container.nix`)
-carries the host's Git identity into the container: it reads `user.name`/
-`user.email` from the host's `git config` and passes them in as
-`GIT_AUTHOR_NAME`/`GIT_AUTHOR_EMAIL`/`GIT_COMMITTER_NAME`/`GIT_COMMITTER_EMAIL`,
-and bind-mounts `~/.gitconfig` read-only (via `GIT_CONFIG_GLOBAL`, outside of
-`/tmp/home` to avoid container permission issues) as a fallback. The wrapper
-also writes commit-authoring instructions for the CLI so commits made from
-inside the container use the host identity.
+The Copilot CLI runs inside a container that carries the host's Git identity so
+commits use the host `user.name`/`user.email`. That logic lives in the
+standalone [`mortrevere/copilot-container`](https://github.com/mortrevere/copilot-container)
+stack; this repo only provides the plumbing
+(`home/leo/configs/copilot-container.nix`) that pulls the stack on rebuild and
+wires its `copilot-container` script to the system-wide `copilot` command.
 
 ## System Information
 
