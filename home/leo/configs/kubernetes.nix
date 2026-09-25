@@ -12,7 +12,9 @@
     kubectx
     stern
     pinniped
-    kubernetes-helm
+    (wrapHelm kubernetes-helm {
+      plugins = [ kubernetes-helmPlugins.helm-diff ];
+    })
     argocd
   ];
 

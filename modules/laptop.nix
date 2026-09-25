@@ -17,6 +17,11 @@
 
   networking.networkmanager.enable = true;
 
+  # Prefer IPv4 when an IPv6 route is unavailable or unreliable.
+  environment.etc."gai.conf".text = ''
+    precedence ::ffff:0:0/96 100
+  '';
+
   fonts.packages = with pkgs; [
     font-awesome
     iosevka
@@ -133,10 +138,13 @@
     firefox
     chromium
     dive
+    skopeo
     emacs-pgtk
     gum
     openstackclient
     terraform
+    opentofu
+    openbao
     vault
     waybar
     wofi
