@@ -15,7 +15,10 @@
   boot.loader.systemd-boot.enable = true;
   boot.loader.efi.canTouchEfiVariables = true;
 
-  networking.networkmanager.enable = true;
+  networking.networkmanager = {
+    enable = true;
+    settings.main.no-auto-default = "*";
+  };
 
   # Prefer IPv4 when an IPv6 route is unavailable or unreliable.
   environment.etc."gai.conf".text = ''
@@ -143,6 +146,7 @@
     gum
     openstackclient
     terraform
+    terragrunt
     opentofu
     openbao
     vault

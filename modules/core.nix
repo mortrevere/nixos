@@ -54,6 +54,8 @@
 
   programs.bash.enable = true;
 
+  environment.systemPackages = [ pkgs.gnumake ];
+
   services.openssh = {
     enable = true;
     settings = {
