@@ -55,6 +55,7 @@
     incus
     scaleway-cli
     redis
+    postgresql
     awscli2
     google-cloud-sdk
     (linode-cli.overrideAttrs (old: {

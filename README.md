@@ -89,6 +89,10 @@ server hosts.
   `home/leo/configs/copilot-container.nix`, which pulls the standalone
   [`mortrevere/copilot-container`](https://github.com/mortrevere/copilot-container)
   stack on rebuild
+- OpenAI Codex CLI, exposed through the `codex` command wired up by
+  `home/leo/configs/codex-container.nix`, which pulls the standalone
+  [`mortrevere/codex-container`](https://github.com/mortrevere/codex-container)
+  stack on rebuild
 - Kubectl context/namespace shown in the shell prompt on the laptop
   (`home/leo/configs/prompt-laptop.nix`); a simpler prompt on servers
   (`prompt-server.nix`)
@@ -246,6 +250,17 @@ standalone [`mortrevere/copilot-container`](https://github.com/mortrevere/copilo
 stack; this repo only provides the plumbing
 (`home/leo/configs/copilot-container.nix`) that pulls the stack on rebuild and
 wires its `copilot-container` script to the system-wide `copilot` command.
+
+The Codex CLI uses the same integration pattern through
+`home/leo/configs/codex-container.nix`: rebuilds clone or update
+[`mortrevere/codex-container`](https://github.com/mortrevere/codex-container),
+and the user-local `codex` command forwards arguments to its wrapper from the
+current working directory. The standalone stack manages container builds,
+authentication, profiles, persistent state, and host Git identity forwarding.
+Use `codex login --device-auth` to authenticate and `cdcodex` to open the
+persistent state directory. Optional notifications can be configured through
+`programs.codex-container.ntfyTopic` or the `CODEX_NTFY_TOPIC` environment
+variable.
 
 ## System Information
 

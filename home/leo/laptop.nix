@@ -3,6 +3,7 @@
 {
   imports = [
     ./configs/copilot-container.nix
+    ./configs/codex-container.nix
     ./configs/kubernetes.nix
     ./configs/shell-laptop.nix
     ./configs/emacs.nix
@@ -19,6 +20,7 @@
   ];
 
   programs.copilot-container.enable = true;
+  programs.codex-container.enable = true;
 
   xdg.mimeApps = {
     enable = true;
