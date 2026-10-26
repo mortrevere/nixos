@@ -31,6 +31,11 @@ BLACK_WIFI_SSID=your-ssid
 BLACK_WIFI_PSK=your-wifi-password
 ```
 
+Black is a Janus WireGuard VPN member. Create
+`/etc/nixos/secrets/janus-wg.conf` as a root-owned, mode-`0600` `wg-quick`
+configuration before activating the host configuration. Keep this file outside
+the repository.
+
 For wildcard certificate sync from Red, this host declares the public half of
 `/etc/nixos/secrets/cert-sync_ed25519` for its restricted SFTP-only `cert-sync`
 user:
@@ -45,6 +50,9 @@ user:
 
 ```sh
 systemctl status podman-docker-registry podman-reverse-proxy mount-data-drives.timer
+systemctl status wg-quick-janus
+ip -4 addr show dev janus
+sudo wg show janus
 curl -I -H 'Host: docker.house.leo.surf' http://127.0.0.1/
 curl -Ik https://docker.house.leo.surf/v2/
 curl -Ik https://black-files.house.leo.surf/
