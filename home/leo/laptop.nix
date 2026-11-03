@@ -22,6 +22,12 @@
   programs.copilot-container.enable = true;
   programs.codex-container.enable = true;
 
+  programs.git.enable = true;
+  programs.delta = {
+    enable = true;
+    enableGitIntegration = true;
+  };
+
   xdg.mimeApps = {
     enable = true;
     defaultApplications = {

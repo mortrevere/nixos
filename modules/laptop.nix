@@ -156,9 +156,11 @@
     pavucontrol
     wl-clipboard
     grim
+    kooha
     tailscale
     wev
     vlc
+    spotify
     libcamera
     intel-gpu-tools
   ];
