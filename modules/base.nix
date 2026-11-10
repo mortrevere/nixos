@@ -1,4 +1,5 @@
 {
+  inputs,
   pkgs,
   username,
   ...
@@ -7,7 +8,8 @@
 {
   imports = [ ./core.nix ];
 
-  boot.kernelPackages = pkgs.linuxPackages_latest;
+  boot.kernelPackages =
+    inputs.kernel-nixpkgs.legacyPackages.${pkgs.stdenv.hostPlatform.system}.linuxPackages_latest;
 
   users.users.${username}.extraGroups = [ "podman" ];
 
