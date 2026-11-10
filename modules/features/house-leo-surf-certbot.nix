@@ -18,6 +18,7 @@ let
   certbot = pkgs.certbot.withPlugins (plugins: [
     plugins.certbot-dns-ovh
   ]);
+  syncComplete = pkgs.writeText "cert-sync-complete" "";
 
   deployHook = pkgs.writeShellScript "house-leo-surf-certbot-deploy-hook" ''
         set -euo pipefail
@@ -47,13 +48,13 @@ let
 
           remote="cert-sync@$address"
 
-          ${pkgs.openssh}/bin/sftp "''${sftp_common[@]}" "$remote" <<EOF
+          ${pkgs.openssh}/bin/sftp -b - "''${sftp_common[@]}" "$remote" <<EOF
     -rm complete
     put ${certDir}/fullchain.pem fullchain.pem.next
     rename fullchain.pem.next fullchain.pem
     put ${certDir}/privkey.pem privkey.pem.next
     rename privkey.pem.next privkey.pem
-    put /dev/null complete.next
+    put ${syncComplete} complete.next
     rename complete.next complete
     EOF
         done
