@@ -327,21 +327,6 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "raspberrypi"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#2ab250"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
               "options": "vps-prod"
             },
             "properties": [
@@ -427,21 +412,6 @@
           "unit": "percent"
         },
         "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "raspberrypi"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#2ab250"
-                }
-              }
-            ]
-          },
           {
             "matcher": {
               "id": "byName",
@@ -532,21 +502,6 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "raspberrypi"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#2ab250"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
               "options": "vps-prod"
             },
             "properties": [
@@ -631,21 +586,6 @@
           "min": 0
         },
         "overrides": [
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "raspberrypi"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#2ab250"
-                }
-              }
-            ]
-          },
           {
             "matcher": {
               "id": "byName",
@@ -785,21 +725,6 @@
                 "value": {
                   "mode": "fixed",
                   "fixedColor": "#303030"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "raspberrypi"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#2ab250"
                 }
               }
             ]
@@ -947,21 +872,6 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "raspberrypi"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#2ab250"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
               "options": "vps-prod"
             },
             "properties": [
@@ -1086,21 +996,6 @@
                 "value": {
                   "mode": "fixed",
                   "fixedColor": "#303030"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byRegexp",
-              "options": "^(read|write) raspberrypi$"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#2ab250"
                 }
               }
             ]
@@ -1257,21 +1152,6 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "raspberrypi"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#2ab250"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
               "options": "vps-prod"
             },
             "properties": [
@@ -1394,21 +1274,6 @@
                 "value": {
                   "mode": "fixed",
                   "fixedColor": "#303030"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "raspberrypi"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#2ab250"
                 }
               }
             ]
@@ -1541,21 +1406,6 @@
                 "value": {
                   "mode": "fixed",
                   "fixedColor": "#303030"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "raspberrypi"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#2ab250"
                 }
               }
             ]
@@ -1700,21 +1550,6 @@
                 "value": {
                   "mode": "fixed",
                   "fixedColor": "#303030"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "raspberrypi"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#2ab250"
                 }
               }
             ]
@@ -1898,36 +1733,6 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "rx raspberrypi"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#2ab250"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "tx raspberrypi"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#2ab250"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
               "options": "rx vps-prod"
             },
             "properties": [
@@ -2081,21 +1886,6 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "raspberrypi"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#2ab250"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
               "options": "vps-prod"
             },
             "properties": [
@@ -2223,21 +2013,6 @@
                 "value": {
                   "mode": "fixed",
                   "fixedColor": "#303030"
-                }
-              }
-            ]
-          },
-          {
-            "matcher": {
-              "id": "byName",
-              "options": "raspberrypi"
-            },
-            "properties": [
-              {
-                "id": "color",
-                "value": {
-                  "mode": "fixed",
-                  "fixedColor": "#2ab250"
                 }
               }
             ]

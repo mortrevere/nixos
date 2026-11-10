@@ -8,10 +8,6 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
     hyprland.url = "github:hyprwm/Hyprland";
-    nixos-raspberrypi = {
-      url = "github:nvmd/nixos-raspberrypi/main";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
     treefmt-nix.url = "github:numtide/treefmt-nix";
     private = {
       url = "path:./private";
@@ -31,7 +27,6 @@
       defaultSystem = "x86_64-linux";
       supportedSystems = [
         defaultSystem
-        "aarch64-linux"
       ];
 
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
@@ -82,16 +77,6 @@
             ./home/${username}/server.nix
           ];
         };
-
-        raspberrypi = {
-          system = "aarch64-linux";
-          systemModules = [
-            ./hosts/raspberrypi/configuration.nix
-          ];
-          homeModules = [
-            ./home/${username}/kiosk.nix
-          ];
-        };
       };
 
       mkHost =
@@ -104,7 +89,6 @@
         nixpkgs.lib.nixosSystem {
           specialArgs = {
             inherit inputs username hostname;
-            inherit (inputs) nixos-raspberrypi;
           };
           modules = [
             { nixpkgs.hostPlatform = system; }

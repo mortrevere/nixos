@@ -53,21 +53,12 @@ let
     ${janusAuthRequestLocation}
   '';
 
-  houseNodeTargets =
-    (map (name: {
-      targets = [
-        "${name}.${homeLan.domain}:9100"
-      ];
-      labels.node = name;
-    }) homeLan.nodeNames)
-    ++ [
-      {
-        targets = [
-          "10.0.0.100:9100"
-        ];
-        labels.node = "raspberrypi";
-      }
+  houseNodeTargets = map (name: {
+    targets = [
+      "${name}.${homeLan.domain}:9100"
     ];
+    labels.node = name;
+  }) homeLan.nodeNames;
 
   webNodeTargets = [
     {

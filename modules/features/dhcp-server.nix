@@ -12,7 +12,6 @@ let
     "5C:51:4F:CA:D1:A4,10.0.0.29,black,infinite"
     "30:24:32:1E:FD:F2,10.0.0.15,infinite"
     "28:6B:35:89:83:89,10.0.0.33,Miaou,infinite"
-    "DC:A6:32:D2:93:D0,10.0.0.100,infinite"
     "C4:23:60:F9:EF:84,10.0.0.32,infinite"
     "EC:B5:FA:9A:C5:F1,10.0.0.10,hue-bridge,infinite"
     "98:59:7A:5B:86:E1,10.0.0.19,red,infinite"

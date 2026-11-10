@@ -1,6 +1,6 @@
 # NixOS Flake - Automation Notes
 
-This repository defines a multi-host NixOS flake for laptop, server, and kiosk
+This repository defines a multi-host NixOS flake for laptop and server
 profiles. It is designed for host `nixos` plus server hosts `red`, `blue`, and
 `black`; every host uses user `leo`.
 
