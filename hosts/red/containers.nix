@@ -835,7 +835,7 @@ in
       "podman-iris.service"
     ];
     serviceConfig = {
-      Restart = "always";
+      Restart = lib.mkForce "always";
       RestartSec = "5min";
     };
     preStart = lib.mkBefore ''
