@@ -542,7 +542,7 @@
         "nixpkgs": [
           "nixpkgs"
         ],
-        "sekoia-agent": "sekoia-agent"
+        "sekoia-nixpkgs": "sekoia-nixpkgs"
       },
       "locked": {
         "path": "./private",
@@ -564,7 +564,7 @@
         "treefmt-nix": "treefmt-nix"
       }
     },
-    "sekoia-agent": {
+    "sekoia-nixpkgs": {
       "inputs": {
         "nixpkgs": [
           "private",
@@ -572,17 +572,17 @@
         ]
       },
       "locked": {
-        "lastModified": 1777892232,
-        "narHash": "sha256-6scU+97m4rZnRbCN45STYdCGGZvs7cUFsZr7nas2Xsg=",
+        "lastModified": 1793824062,
+        "narHash": "sha256-uQ33lUOjpJgA6XqXjR8CCjsRO2ddMQFVwfQsh0RWG+A=",
         "ref": "refs/heads/main",
-        "rev": "3c86d88c860803d6b731fb96998468bcb713f56c",
-        "revCount": 4,
+        "rev": "c0d56db755dd11267f0e77f6b1983063531674b1",
+        "revCount": 28,
         "type": "git",
-        "url": "ssh://git@github.com/SekoiaLab/nix-endpoint-agent.git"
+        "url": "ssh://git@github.com/SekoiaLab/nixpkgs.git"
       },
       "original": {
         "type": "git",
-        "url": "ssh://git@github.com/SekoiaLab/nix-endpoint-agent.git"
+        "url": "ssh://git@github.com/SekoiaLab/nixpkgs.git"
       }
     },
     "systems": {

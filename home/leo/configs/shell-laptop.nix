@@ -15,6 +15,16 @@
     };
 
     bashrcExtra = ''
+      prg() {
+        if (( $# < 1 || $# > 2 )); then
+          echo 'Usage: prg TEXT [PATH_PATTERN]' >&2
+          return 2
+        fi
+        local glob="**/''${2:-platform.*}/**"
+        rg --files -g "$glob" . | rg -F -- "$1"
+        rg -nF -g "$glob" -- "$1" .
+      }
+
       export EDITOR="emacsclient -c -a emacs"
       touch /tmp/rofi
 
