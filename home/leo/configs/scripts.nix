@@ -7,6 +7,28 @@ let
   pythonWithEvdev = pkgs.python3.withPackages (ps: [ ps.evdev ]);
 in
 {
+  # Keep the Dell platform rfkill switch enabled: blocking it can remove the USB adapter.
+  home.file.".local/bin/toggle-bluetooth" = {
+    executable = true;
+    text = ''
+      #!/usr/bin/env bash
+      set -euo pipefail
+      export LC_ALL=C
+
+      controller_info="$(${pkgs.bluez}/bin/bluetoothctl show)"
+      case "$controller_info" in
+        *"Powered: yes"*) power=off ;;
+        *"Powered: no"*) power=on ;;
+        *)
+          echo "No Bluetooth controller power state available." >&2
+          exit 1
+          ;;
+      esac
+
+      exec ${pkgs.bluez}/bin/bluetoothctl power "$power"
+    '';
+  };
+
   # Clipboard utilities (Wayland)
   home.file.".local/bin/setclip" = {
     executable = true;

@@ -274,7 +274,7 @@ in
       bind = [
         # apps
         "$mod, RETURN, exec, $terminal"
-        "$mod, B, exec, rfkill toggle bluetooth"
+        "$mod, B, exec, ~/.local/bin/toggle-bluetooth"
         "$mod, D, exec, ${launcherCmd}"
         "$mod, R, exec, ${rofiCmd} -show run"
         "$mod, A, exec, ~/.config/hypr/scripts/journal-rofi.sh"
