@@ -128,10 +128,10 @@ in
       hyprctl binds -j | ${pkgs.jq}/bin/jq -r '
         # readable modifier flags
         def mod_names:
-          [ if . % 2 == 1           then "SUPER" else empty end,
-            if (. / 4 | floor) % 2 == 1 then "ALT"   else empty end,
-            if (. / 2 | floor) % 2 == 1 then "SHIFT" else empty end,
-            if (. / 8 | floor) % 2 == 1 then "CTRL"  else empty end
+          [ if (. / 64 | floor) % 2 == 1 then "SUPER" else empty end,
+            if (. / 8 | floor) % 2 == 1 then "ALT"   else empty end,
+            if . % 2 == 1               then "SHIFT" else empty end,
+            if (. / 4 | floor) % 2 == 1 then "CTRL"  else empty end
           ] | join(" + ");
 
         .[] |
@@ -139,7 +139,8 @@ in
         (if $mods == "" then .key else "\($mods) + \(.key)" end) as $combo |
         (.dispatcher) as $action |
         (.arg // "") as $arg |
-        if $arg != "" then "\($combo)  →  \($action) \($arg)"
+        if (.description // "") != "" then "\($combo)  →  \(.description)"
+        elif $arg != "" then "\($combo)  →  \($action) \($arg)"
         else "\($combo)  →  \($action)" end
       ' | sort -u | ${pkgs.rofi}/bin/rofi -dmenu -i -p "Keybinds" -no-custom
     '';

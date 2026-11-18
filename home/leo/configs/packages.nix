@@ -31,11 +31,11 @@
     hypridle
 
     # file manager
-    xfce.thunar
-    xfce.tumbler # thumbnail generator for thunar
+    thunar
+    tumbler # thumbnail generator for thunar
 
     # graphics
-    xfce.ristretto # lightweight image viewer
+    ristretto # lightweight image viewer
     gimp
 
     # theming

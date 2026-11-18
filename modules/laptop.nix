@@ -61,7 +61,7 @@
     enable = true;
     settings.default_session.command = builtins.concatStringsSep " " [
       "${pkgs.tuigreet}/bin/tuigreet"
-      "--cmd Hyprland"
+      "--cmd start-hyprland"
       "--time"
       "--greeting 'NixOS'"
       "--asterisks"

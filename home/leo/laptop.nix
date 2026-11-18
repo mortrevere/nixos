@@ -1,4 +1,4 @@
-{ pkgs, ... }:
+{ config, pkgs, ... }:
 
 {
   imports = [
@@ -49,6 +49,7 @@
       name = "Adwaita-dark";
       package = pkgs.gnome-themes-extra;
     };
+    gtk4.theme = config.gtk.theme;
     iconTheme = {
       name = "Papirus-Dark";
       package = pkgs.papirus-icon-theme;
